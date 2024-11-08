@@ -9,7 +9,7 @@ np.random.seed(4)
 def generate_data(N: int) -> pd.DataFrame:
     # User types
     user_types = [1, 2, 3, 4]
-    theta_U = {1: 0.2, 2: -0.2, 3: 0.4, 4: -0.1}
+    theta_U = {1: -0.2, 2: -0.1, 3: 0.2, 4: 0.4}
 
     # Action space (bid amounts)
     action_space = np.round(np.arange(0.05, 1.05, 0.05), 2)
