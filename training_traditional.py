@@ -6,7 +6,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.neural_network import MLPRegressor
 import matplotlib.pyplot as plt
 
-class CausalModelTrainer:
+class MLPRegressorTrainer:
     def __init__(self, data):
         self.data = data
         self.data_len = len(data)
