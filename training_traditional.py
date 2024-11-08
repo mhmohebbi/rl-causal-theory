@@ -63,7 +63,7 @@ class CausalModelTrainer:
         plt.ylabel('Predicted R')
         plt.title('Actual vs. Predicted R on Test Set')
         plt.plot([0, 1], [0, 1], 'r--')
-        plt.savefig(f'./causal/traditional/actual_vs_predicted_{self.data_len}.png')
+        plt.savefig(f'./traditional/actual_vs_predicted_{self.data_len}.png')
 
         residuals = self.y_test - self.y_pred_test
 
@@ -72,7 +72,7 @@ class CausalModelTrainer:
         plt.xlabel('Residuals')
         plt.ylabel('Frequency')
         plt.title('Residuals Distribution on Test Set')
-        plt.savefig(f'./causal/traditional/residuals_distribution_{self.data_len}.png')
+        plt.savefig(f'./traditional/residuals_distribution_{self.data_len}.png')
 
     def plotting_data(self):
         return self.y_test, self.y_pred_test

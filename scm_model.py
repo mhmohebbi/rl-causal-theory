@@ -15,7 +15,7 @@ def generate_data(N: int) -> pd.DataFrame:
     action_space = np.round(np.arange(0.05, 1.05, 0.05), 2)
 
     # Weights
-    w_A = 0.5
+    w_A = 0.3
 
     w_C1 = {
         'TimeOfDay': {'Morning': 0.1, 'Afternoon': 0.0, 'Evening': 0.2, 'Night': -0.1},
@@ -206,19 +206,20 @@ def generate_data(N: int) -> pd.DataFrame:
         'R': R_samples
     })
 
-    data.to_csv(f'./causal/data_{N}.csv', index=False)
+    data.to_csv(f'./data/data_{N}.csv', index=False)
 
     data["R"] = data["P_click"]
     data_observed = data.drop(columns=['U', 'P_click'])
 
     print(data_observed.head())
 
-    # For analysis, let's check the distribution of P_click
+    # For analysis, check the distribution of P_click
     plt.hist(P_click_samples, bins=50)
     plt.title('Distribution of P_click')
     plt.xlabel('P_click')
     plt.ylabel('Frequency')
-    plt.savefig(f'./causal/P_click_{N}.png')
+    plt.savefig(f'./p_clicks/P_click_{N}.png')
+    plt.clf()
 
     return data_observed
 
@@ -254,7 +255,7 @@ def experiment():
         plt.title('Actual vs. Predicted R on Test Set')
         plt.plot([0, 1], [0, 1], 'r--')
         plt.legend()
-        plt.savefig(f'./causal/actual_vs_predicted_{data_lens[i]}.png')
+        plt.savefig(f'./comparison_results/actual_vs_predicted_{data_lens[i]}.png')
 
         residuals_traditional = traditional_y_test - traditional_y_pred_test
         residuals_moe = moe_y_test - moe_y_pred_test
@@ -266,7 +267,7 @@ def experiment():
         plt.ylabel('Frequency')
         plt.title('Residuals Distribution on Test Set')
         plt.legend()
-        plt.savefig(f'./causal/residuals_distribution_{data_lens[i]}.png')
+        plt.savefig(f'./comparison_results/residuals_distribution_{data_lens[i]}.png')
 
         plt.rcdefaults()
 
@@ -277,10 +278,7 @@ def experiment():
     mses_df.plot(ax=ax[0], kind='bar', title='MSE', ylabel='MSE', xlabel='Data Length')
     r2s_df.plot(ax=ax[1], kind='bar', title='R^2', ylabel='R^2', xlabel='Data Length')
     plt.tight_layout()
-    plt.savefig('./causal/metrics.png')
-
-
-
+    plt.savefig('./metrics.png')
 
 if __name__ == '__main__':
     experiment()

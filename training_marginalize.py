@@ -210,7 +210,7 @@ class MixtureOfExpertsTrainer:
         plt.xlabel('Epoch')
         plt.ylabel('MSE Loss')
         plt.legend()
-        plt.savefig(f'./causal/marginalizing/loss_during_training_{self.data_len}.png')
+        plt.savefig(f'./marginalizing/loss_during_training_{self.data_len}.png')
 
         # Plot actual vs predicted
         plt.figure(figsize=(6,6))
@@ -219,7 +219,7 @@ class MixtureOfExpertsTrainer:
         plt.ylabel('Predicted R')
         plt.title('Actual vs Predicted R on Test Data')
         plt.plot([0,1],[0,1], 'r--') 
-        plt.savefig(f'./causal/marginalizing/actual_vs_predicted_{self.data_len}.png')
+        plt.savefig(f'./marginalizing/actual_vs_predicted_{self.data_len}.png')
 
         # Residuals
         residuals = self.y_test_numpy - self.y_pred_test
@@ -228,7 +228,7 @@ class MixtureOfExpertsTrainer:
         plt.xlabel('Residuals')
         plt.ylabel('Frequency')
         plt.title('Residuals Distribution on Test Set')
-        plt.savefig(f'./causal/marginalizing/residuals_distribution_{self.data_len}.png')
+        plt.savefig(f'./marginalizing/residuals_distribution_{self.data_len}.png')
 
     def plotting_data(self):
         return self.y_test_numpy, self.y_pred_test
@@ -241,4 +241,4 @@ class MixtureOfExpertsTrainer:
         plt.xlabel('Epoch')
         plt.ylabel('MSE Loss')
         plt.legend()
-        plt.savefig(f'./causal/marginalizing/loss_during_training_{self.data_len}.png')
+        plt.savefig(f'./marginalizing/loss_during_training_{self.data_len}.png')
