@@ -133,7 +133,7 @@ class MixtureOfExpertsTrainer:
                 for i in range(self.num_U):
                     h = F.relu(self.experts_hidden[i](input_all))
                     out = torch.sigmoid(self.experts_output[i](h))
-                    expert_outputs.append(out)
+                    expert_outputs.append(self.experts_output[i](h))
                 # expert_outputs is a list of tensors of shape (batch_size, 1)
                 # Concatenate expert outputs along dimension 1
                 expert_outputs = torch.cat(expert_outputs, dim=1)  # Shape: (batch_size, num_U)
