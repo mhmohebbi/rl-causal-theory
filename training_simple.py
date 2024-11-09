@@ -1,0 +1,182 @@
+import numpy as np
+import pandas as pd
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
+import matplotlib.pyplot as plt
+
+class SimpleNNTrainer:
+    def __init__(self, data, batch_size=32, num_epochs=20):
+        self.data = data
+        self.data_len = len(data)
+        self.model = None
+        self.train_loader = None
+        self.val_loader = None
+        self.test_loader = None
+        self.train_losses = []
+        self.val_losses = []
+        self.y_test_numpy = None
+        self.y_pred_test = None
+        self.batch_size = batch_size
+        self.num_epochs = num_epochs
+
+    def preprocess_data(self):
+        # Copy the data to avoid modifying the original DataFrame
+        df = self.data.copy()
+        if 'U' in df.columns:
+            df = df.drop(columns=['U'])  # Ensure 'U' is not included
+
+        # List of categorical features
+        categorical_features = ['TimeOfDay', 'DayOfWeek', 'Seasonality', 'Age', 'Gender',
+                                'Location', 'PurchaseHistory', 'DeviceType']
+
+        # One-hot encode categorical features using pd.get_dummies
+        df_encoded = pd.get_dummies(df, columns=categorical_features)
+
+        # Split into features and target
+        X = df_encoded.drop(columns=['R'])
+        y = df_encoded['R'].values
+
+        # Split into training and testing sets
+        X_train_full, X_test, y_train_full, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42)
+
+        # Further split training data for validation
+        X_train, X_val, y_train, y_val = train_test_split(
+            X_train_full, y_train_full, test_size=0.2, random_state=42)
+
+        # Convert dataframes to numpy arrays
+        X_train = X_train.values.astype(np.float32)
+        X_val = X_val.values.astype(np.float32)
+        X_test = X_test.values.astype(np.float32)
+
+        y_train = y_train.astype(np.float32)
+        y_val = y_val.astype(np.float32)
+        y_test = y_test.astype(np.float32)
+
+        # Convert numpy arrays to torch tensors
+        X_train = torch.tensor(X_train, dtype=torch.float32)
+        X_val = torch.tensor(X_val, dtype=torch.float32)
+        X_test = torch.tensor(X_test, dtype=torch.float32)
+
+        y_train = torch.tensor(y_train, dtype=torch.float32).unsqueeze(1)
+        y_val = torch.tensor(y_val, dtype=torch.float32).unsqueeze(1)
+        y_test = torch.tensor(y_test, dtype=torch.float32).unsqueeze(1)
+
+        # Create TensorDatasets
+        train_dataset = torch.utils.data.TensorDataset(X_train, y_train)
+        val_dataset = torch.utils.data.TensorDataset(X_val, y_val)
+        test_dataset = torch.utils.data.TensorDataset(X_test, y_test)
+
+        # Create DataLoaders
+        self.train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
+        self.val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=self.batch_size)
+        self.test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=self.batch_size)
+
+        # Save test targets for later evaluation
+        self.y_test_numpy = y_test.squeeze().numpy()
+
+    def train_model(self):
+        # Define the neural network architecture
+        input_size = self.train_loader.dataset.tensors[0].shape[1]
+        hidden_sizes = [100, 50]
+        output_size = 1
+
+        self.model = nn.Sequential(
+            nn.Linear(input_size, hidden_sizes[0]),
+            nn.ReLU(),
+            nn.Linear(hidden_sizes[0], hidden_sizes[1]),
+            nn.ReLU(),
+            nn.Linear(hidden_sizes[1], output_size)
+        )
+
+        # Define loss function and optimizer
+        criterion = nn.MSELoss()
+        optimizer = optim.Adam(self.model.parameters(), lr=0.001)
+
+        self.train_losses = []
+        self.val_losses = []
+
+        for epoch in range(self.num_epochs):
+            self.model.train()
+            epoch_train_loss = 0.0
+            for batch_X, batch_y in self.train_loader:
+                optimizer.zero_grad()
+                outputs = self.model(batch_X)
+                loss = criterion(outputs, batch_y)
+                loss.backward()
+                optimizer.step()
+                epoch_train_loss += loss.item() * batch_X.size(0)
+            epoch_train_loss /= len(self.train_loader.dataset)
+            self.train_losses.append(epoch_train_loss)
+
+            # Validation
+            self.model.eval()
+            epoch_val_loss = 0.0
+            with torch.no_grad():
+                for batch_X, batch_y in self.val_loader:
+                    outputs = self.model(batch_X)
+                    loss = criterion(outputs, batch_y)
+                    epoch_val_loss += loss.item() * batch_X.size(0)
+            epoch_val_loss /= len(self.val_loader.dataset)
+            self.val_losses.append(epoch_val_loss)
+
+            print(f"Epoch {epoch+1}/{self.num_epochs}, Training Loss: {epoch_train_loss:.4f}, Validation Loss: {epoch_val_loss:.4f}")
+
+
+    def evaluate_model(self):
+        # Predict on test data
+        self.model.eval()
+        y_pred_test = []
+        with torch.no_grad():
+            for batch_X, _ in self.test_loader:
+                outputs = self.model(batch_X)
+                y_pred_test.append(outputs)
+        self.y_pred_test = torch.cat(y_pred_test, dim=0).squeeze().numpy()
+
+        # Calculate MSE and R2 score
+        mse_test = mean_squared_error(self.y_test_numpy, self.y_pred_test)
+        r2_test = r2_score(self.y_test_numpy, self.y_pred_test)
+
+        print(f"Testing MSE: {mse_test:.4f}, R2: {r2_test:.4f}")
+
+        return mse_test, r2_test
+
+    def plot_results(self):
+        # Plot training and validation loss
+        plt.figure()
+        plt.plot(self.train_losses, label='Training Loss')
+        plt.plot(self.val_losses, label='Validation Loss')
+        plt.title('Loss During Training')
+        plt.xlabel('Epoch')
+        plt.ylabel('MSE Loss')
+        plt.legend()
+        plt.savefig(f'./traditional/loss_during_training_{self.data_len}.png')
+        plt.close()
+
+        # Plot actual vs predicted
+        plt.figure(figsize=(6, 6))
+        plt.scatter(self.y_test_numpy, self.y_pred_test, alpha=0.5)
+        plt.xlabel('Actual R')
+        plt.ylabel('Predicted R')
+        plt.title('Actual vs. Predicted R on Test Data')
+        min_val = min(self.y_test_numpy.min(), self.y_pred_test.min())
+        max_val = max(self.y_test_numpy.max(), self.y_pred_test.max())
+        plt.plot([min_val, max_val], [min_val, max_val], 'r--')
+        plt.savefig(f'./traditional/actual_vs_predicted_{self.data_len}.png')
+        plt.close()
+
+        # Plot residuals distribution
+        residuals = self.y_test_numpy - self.y_pred_test
+        plt.figure(figsize=(8, 6))
+        plt.hist(residuals, bins=50, alpha=0.7)
+        plt.xlabel('Residuals')
+        plt.ylabel('Frequency')
+        plt.title('Residuals Distribution on Test Set')
+        plt.savefig(f'./traditional/residuals_distribution_{self.data_len}.png')
+        plt.close()
+
+    def plotting_data(self):
+        return self.y_test_numpy, self.y_pred_test

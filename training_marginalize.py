@@ -11,7 +11,7 @@ from torch.utils.data import TensorDataset, DataLoader
 import matplotlib.pyplot as plt
 
 class MixtureOfExpertsTrainer:
-    def __init__(self, data):
+    def __init__(self, data, batch_size=32, num_epochs=20):
         self.data = data
         self.data_len = len(data)
         self.model = None
@@ -23,6 +23,8 @@ class MixtureOfExpertsTrainer:
         self.val_losses = []
         self.y_test_numpy = None
         self.y_pred_test = None
+        self.batch_size = batch_size
+        self.num_epochs = num_epochs
 
     def preprocess_data(self):
         # Drop 'U' if present and use 'R' as is
@@ -54,29 +56,16 @@ class MixtureOfExpertsTrainer:
             feature in col for feature in ['Age_', 'Gender_', 'Location_', 'PurchaseHistory_', 'DeviceType_'])]
 
         # Extract C2 features for gating network
-        X_train_C2 = X_train[self.C2_features].values
-        X_val_C2 = X_val[self.C2_features].values
-        X_test_C2 = X_test[self.C2_features].values
+        X_train_C2 = X_train[self.C2_features].values.astype(np.float32)
+        X_val_C2 = X_val[self.C2_features].values.astype(np.float32)
+        X_test_C2 = X_test[self.C2_features].values.astype(np.float32)
 
-        # Convert dataframes to numpy arrays
-        X_train_all = X_train.values
-        X_val_all = X_val.values
-        X_test_all = X_test.values
+        # Extract all features for expert networks
+        X_train_all = X_train.values.astype(np.float32)
+        X_val_all = X_val.values.astype(np.float32)
+        X_test_all = X_test.values.astype(np.float32)
 
         # Convert numpy arrays to torch tensors
-        X_train_C2 = np.array(X_train_C2, dtype=np.float32)
-        X_val_C2 = np.array(X_val_C2, dtype=np.float32)
-        X_test_C2 = np.array(X_test_C2, dtype=np.float32)
-
-        X_train_all = np.array(X_train_all, dtype=np.float32)
-        X_val_all = np.array(X_val_all, dtype=np.float32)
-        X_test_all = np.array(X_test_all, dtype=np.float32)
-
-        y_train = np.array(y_train, dtype=np.float32)
-        y_val = np.array(y_val, dtype=np.float32)
-        y_test = np.array(y_test, dtype=np.float32)
-
-
         X_train_C2 = torch.tensor(X_train_C2, dtype=torch.float32)
         X_val_C2 = torch.tensor(X_val_C2, dtype=torch.float32)
         X_test_C2 = torch.tensor(X_test_C2, dtype=torch.float32)
@@ -95,10 +84,9 @@ class MixtureOfExpertsTrainer:
         test_dataset = TensorDataset(X_test_C2, X_test_all, y_test)
 
         # Create DataLoaders
-        batch_size = 256
-        self.train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-        self.val_loader = DataLoader(val_dataset, batch_size=batch_size)
-        self.test_loader = DataLoader(test_dataset, batch_size=batch_size)
+        self.train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
+        self.val_loader = DataLoader(val_dataset, batch_size=self.batch_size)
+        self.test_loader = DataLoader(test_dataset, batch_size=self.batch_size)
 
         # Save test targets for later evaluation
         self.y_test_numpy = y_test.squeeze().numpy()
@@ -146,18 +134,16 @@ class MixtureOfExpertsTrainer:
 
                 return final_output
 
-        # Instantiate the model
         self.model = MixtureOfExperts(input_size_all=input_size_all, input_size_C2=input_size_C2, num_U=num_U)
 
         # Define loss and optimizer
         criterion = nn.MSELoss()
         optimizer = optim.Adam(self.model.parameters(), lr=0.001)
 
-        num_epochs = 20
         self.train_losses = []
         self.val_losses = []
 
-        for epoch in range(num_epochs):
+        for epoch in range(self.num_epochs):
             self.model.train()
             epoch_train_loss = 0.0
             for batch_C2, batch_all, batch_y in self.train_loader:
@@ -181,7 +167,7 @@ class MixtureOfExpertsTrainer:
             epoch_val_loss /= len(self.val_loader.dataset)
             self.val_losses.append(epoch_val_loss)
 
-            print(f"Epoch {epoch+1}/{num_epochs}, Training Loss: {epoch_train_loss:.4f}, Validation Loss: {epoch_val_loss:.4f}")
+            print(f"Epoch {epoch+1}/{self.num_epochs}, Training Loss: {epoch_train_loss:.4f}, Validation Loss: {epoch_val_loss:.4f}")
 
     def evaluate_model(self):
         # Predict on test data
