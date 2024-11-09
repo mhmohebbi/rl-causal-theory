@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import OneHotEncoder
 import matplotlib.pyplot as plt
 
 class SimpleNNTrainer:
@@ -21,23 +22,23 @@ class SimpleNNTrainer:
         self.y_pred_test = None
         self.batch_size = batch_size
         self.num_epochs = num_epochs
+        self.encoder = OneHotEncoder(sparse_output=False)
 
     def preprocess_data(self):
-        # Copy the data to avoid modifying the original DataFrame
-        df = self.data.copy()
-        if 'U' in df.columns:
-            df = df.drop(columns=['U'])  # Ensure 'U' is not included
+        X = self.data[['A', 'TimeOfDay', 'DayOfWeek', 'Seasonality', 'Age', 'Gender', 'Location',
+                       'PurchaseHistory', 'DeviceType']]
+        y = self.data['R'].values
 
-        # List of categorical features
         categorical_features = ['TimeOfDay', 'DayOfWeek', 'Seasonality', 'Age', 'Gender',
                                 'Location', 'PurchaseHistory', 'DeviceType']
 
-        # One-hot encode categorical features using pd.get_dummies
-        df_encoded = pd.get_dummies(df, columns=categorical_features)
+        X_encoded = self.encoder.fit_transform(X[categorical_features])
+        encoded_feature_names = self.encoder.get_feature_names_out(categorical_features)
+        X_encoded_df = pd.DataFrame(X_encoded, columns=encoded_feature_names)
 
-        # Split into features and target
-        X = df_encoded.drop(columns=['R'])
-        y = df_encoded['R'].values
+        X_numeric = X.drop(columns=categorical_features).reset_index(drop=True)
+        X = pd.concat([X_numeric, X_encoded_df], axis=1)
+
 
         # Split into training and testing sets
         X_train_full, X_test, y_train_full, y_test = train_test_split(
