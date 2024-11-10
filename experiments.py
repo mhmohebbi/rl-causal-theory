@@ -43,6 +43,7 @@ def reward_regression_experiment():
         plt.plot([0, 1], [0, 1], 'r--')
         plt.legend()
         plt.savefig(f'./comparison_results/actual_vs_predicted_{data_lens[i]}.png')
+        plt.close()
 
         residuals_traditional = traditional_y_test - traditional_y_pred_test
         residuals_moe = moe_y_test - moe_y_pred_test
@@ -56,7 +57,7 @@ def reward_regression_experiment():
         plt.title('Residuals Distribution on Test Set')
         plt.legend()
         plt.savefig(f'./comparison_results/residuals_distribution_{data_lens[i]}.png')
-
+        plt.close()
         plt.rcdefaults()
 
     mses_df = pd.DataFrame(mses, columns=['Traditional', 'Marginalizing over U'], index=data_lens)
@@ -80,17 +81,19 @@ def counterfactual_experiment():
     # train simple regressor on the same data
     regressor = MLPRegressorTrainer(data)
     regressor.preprocess_data()
-    print("\nMSE and R^2 for the traditional model on the same data:")
     regressor.train_model()
+    print("\nMSE and R^2 for the traditional model:")
     regressor.evaluate_model()
     before_r_test, before_r_pred = regressor.plotting_data()
+    print()
 
     # Data Augmentation
     def intervention(a):
         action_space = np.round(np.arange(0.05, 1.05, 0.05), 2)
         action_space = action_space[action_space != a]
-        new_actions = np.random.choice(action_space, size=3)
+        new_actions = np.random.choice(action_space, size=4, replace=False)
         return new_actions
+    
     # generate a new dataset with a different action using counterfactual outcomes
     data_aug = data.copy()
     for i in range(len(data_aug)):
@@ -106,12 +109,16 @@ def counterfactual_experiment():
     
     # train simple regressor on the augmented data
     regressor_aug = MLPRegressorTrainer(data_aug)
-    regressor_aug.preprocess_data()
-    print("\nMSE and R^2 for the traditional model on the augmented data:")
+    test_indices=range(0, len(data))
+    regressor_aug.preprocess_data(test_indices)
     regressor_aug.train_model()
+    print("\nMSE and R^2 for the traditional model on the augmented data:")
     regressor_aug.evaluate_model()
     after_r_test, after_r_pred = regressor_aug.plotting_data()
     print(f"\nOld Data length: {len(data)}, New Data length: {len(data_aug)}")
+
+    data.to_csv('./counterfactual_results/data.csv', index=False)
+    data_aug.to_csv('./counterfactual_results/data_aug.csv', index=False)
 
     plt.clf()
     plt.figure(figsize=(8, 6))
@@ -123,6 +130,7 @@ def counterfactual_experiment():
     plt.plot([0, 1], [0, 1], 'r--')
     plt.legend()
     plt.savefig('./counterfactual_results/actual_vs_predicted.png')
+    plt.close()
 
 def set_seed(seed):
     torch.manual_seed(seed)
@@ -136,7 +144,7 @@ def set_seed(seed):
 if __name__ == '__main__':
     set_seed(0)
 
-    reward_regression_experiment()
-    print("Reward regression experiment completed.")
+    # reward_regression_experiment()
+    # print("Reward regression experiment completed.")
     counterfactual_experiment()
     print("Counterfactual experiment completed.")

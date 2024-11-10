@@ -53,7 +53,7 @@ class NormalizingFlowsTrainer:
         input_dim = self.X_dim + self.num_U
 
         nodes = [Ff.InputNode(input_dim, name='input')]
-        for k in range(4):  # Number of coupling layers
+        for k in range(3):  # Number of coupling layers
             nodes.append(Ff.Node(nodes[-1],
                                 Fm.GLOWCouplingBlock,
                                 {'subnet_constructor': subnet_fc, 'clamp': 2.0},
@@ -72,9 +72,11 @@ class NormalizingFlowsTrainer:
             def __init__(self, input_dim, num_U):
                 super(InferenceNetwork, self).__init__()
                 self.network = nn.Sequential(
-                    nn.Linear(input_dim + 1, 256),  # Input: X and R
+                    nn.Linear(input_dim + 1, 128),  # Input: X and R
                     nn.ReLU(),
-                    nn.Linear(256, num_U)
+                    nn.Linear(128, 64),
+                    nn.ReLU(),
+                    nn.Linear(64, num_U)
                 )
             
             def forward(self, x, r):
@@ -90,13 +92,12 @@ class NormalizingFlowsTrainer:
         optimizer = optim.Adam(list(self.generative_net.parameters()) + list(self.inference_net.parameters()), lr=1e-3)
 
         # Loss function: Negative ELBO
-        def loss_function(r_recon, r, q_log_probs, prior_log_probs):
+        def loss_function(r_recon, r, kl_divergence):
             reconstruction_loss = nn.MSELoss()(r_recon, r)
-            kl_divergence = torch.mean(q_log_probs - prior_log_probs)
             return reconstruction_loss + kl_divergence
 
         num_epochs = 20
-        batch_size = 256
+        batch_size = 64
         dataset = torch.utils.data.TensorDataset(self.X_train, self.y_train)
         data_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
@@ -108,19 +109,18 @@ class NormalizingFlowsTrainer:
                 # Inference Network: Compute logits for q(U|X,R)
                 q_logits = self.inference_net(x_batch, r_batch)
                 
-                # Sample U using Gumbel-Softmax
-                u_sample = nn.functional.gumbel_softmax(q_logits, tau=1.0, hard=False)
-                
-                # Compute q(U|X,R) log probabilities
+                # Compute q(U|X,R) probabilities
+                q_probs = nn.functional.softmax(q_logits, dim=1)
+                # Compute log probabilities
                 q_log_probs = nn.functional.log_softmax(q_logits, dim=1)
-                q_log_prob = torch.sum(u_sample * q_log_probs, dim=1)
-                
-                # Prior log probabilities P(U)
+                # Prior log probabilities
                 prior_log_probs = torch.log(self.prior_U.probs)
-                prior_log_prob = torch.sum(u_sample * prior_log_probs, dim=1)
+
+                # Compute KL divergence
+                kl_divergence = torch.sum(q_probs * (q_log_probs - prior_log_probs), dim=1).mean()
 
                 # Concatenate X and U
-                x_u = torch.cat([x_batch, u_sample], dim=1)
+                x_u = torch.cat([x_batch, q_probs], dim=1)
                 
                 # Forward pass through RealNVP
                 z, log_jac_det = self.generative_net(x_u)
@@ -129,7 +129,7 @@ class NormalizingFlowsTrainer:
                 r_recon = torch.sigmoid(z[:, 0].unsqueeze(1))
                 
                 # Compute loss
-                loss = loss_function(r_recon, r_batch, q_log_prob, prior_log_prob)
+                loss = loss_function(r_recon, r_batch, kl_divergence)
                 loss.backward()
                 optimizer.step()
                 
