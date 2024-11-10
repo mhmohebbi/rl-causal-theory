@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from sklearn.preprocessing import OneHotEncoder, LabelEncoder
+from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 from torch.utils.data import TensorDataset, DataLoader
@@ -17,39 +17,34 @@ class MixtureOfExpertsTrainer:
         self.model = None
         self.C2_features = None
         self.train_loader = None
-        self.val_loader = None
         self.test_loader = None
         self.train_losses = []
-        self.val_losses = []
         self.y_test_numpy = None
         self.y_pred_test = None
         self.batch_size = batch_size
         self.num_epochs = num_epochs
+        self.encoder = OneHotEncoder(sparse_output=False)
 
     def preprocess_data(self):
-        # Drop 'U' if present and use 'R' as is
-        df = self.data.copy()
-        if 'U' in df.columns:
-            df = df.drop(columns=['U'])  # Ensure 'U' is not included
+        X = self.data[['A', 'TimeOfDay', 'DayOfWeek', 'Seasonality', 'Age', 'Gender', 'Location',
+                       'PurchaseHistory', 'DeviceType']]
+        y = self.data['R'].values
 
-        # List of categorical features
         categorical_features = ['TimeOfDay', 'DayOfWeek', 'Seasonality', 'Age', 'Gender',
                                 'Location', 'PurchaseHistory', 'DeviceType']
 
         # One-hot encode categorical features
-        df_encoded = pd.get_dummies(df, columns=categorical_features)
+        X_encoded = self.encoder.fit_transform(X[categorical_features])
+        encoded_feature_names = self.encoder.get_feature_names_out(categorical_features)
+        X_encoded_df = pd.DataFrame(X_encoded, columns=encoded_feature_names)
 
-        # Split into features and target
-        X = df_encoded.drop(columns=['R'])
-        y = df_encoded['R'].values
+        # Combine numerical and encoded categorical features
+        X_numeric = X.drop(columns=categorical_features).reset_index(drop=True)
+        X = pd.concat([X_numeric, X_encoded_df], axis=1)
 
         # Split into training and testing sets
-        X_train_full, X_test, y_train_full, y_test = train_test_split(
+        X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42)
-
-        # Further split training data for validation
-        X_train, X_val, y_train, y_val = train_test_split(
-            X_train_full, y_train_full, test_size=0.2, random_state=42)
 
         # Input for gating network (features from C2)
         self.C2_features = [col for col in X.columns if any(
@@ -57,35 +52,28 @@ class MixtureOfExpertsTrainer:
 
         # Extract C2 features for gating network
         X_train_C2 = X_train[self.C2_features].values.astype(np.float32)
-        X_val_C2 = X_val[self.C2_features].values.astype(np.float32)
         X_test_C2 = X_test[self.C2_features].values.astype(np.float32)
 
         # Extract all features for expert networks
         X_train_all = X_train.values.astype(np.float32)
-        X_val_all = X_val.values.astype(np.float32)
         X_test_all = X_test.values.astype(np.float32)
 
         # Convert numpy arrays to torch tensors
         X_train_C2 = torch.tensor(X_train_C2, dtype=torch.float32)
-        X_val_C2 = torch.tensor(X_val_C2, dtype=torch.float32)
         X_test_C2 = torch.tensor(X_test_C2, dtype=torch.float32)
 
         X_train_all = torch.tensor(X_train_all, dtype=torch.float32)
-        X_val_all = torch.tensor(X_val_all, dtype=torch.float32)
         X_test_all = torch.tensor(X_test_all, dtype=torch.float32)
 
         y_train = torch.tensor(y_train, dtype=torch.float32).unsqueeze(1)
-        y_val = torch.tensor(y_val, dtype=torch.float32).unsqueeze(1)
         y_test = torch.tensor(y_test, dtype=torch.float32).unsqueeze(1)
 
         # Create TensorDatasets
         train_dataset = TensorDataset(X_train_C2, X_train_all, y_train)
-        val_dataset = TensorDataset(X_val_C2, X_val_all, y_val)
         test_dataset = TensorDataset(X_test_C2, X_test_all, y_test)
 
         # Create DataLoaders
         self.train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
-        self.val_loader = DataLoader(val_dataset, batch_size=self.batch_size)
         self.test_loader = DataLoader(test_dataset, batch_size=self.batch_size)
 
         # Save test targets for later evaluation
@@ -121,8 +109,9 @@ class MixtureOfExpertsTrainer:
                 for i in range(self.num_U):
                     h = F.relu(self.experts_hidden[i](input_all))
                     out = torch.sigmoid(self.experts_output[i](h))
-                    expert_outputs.append(self.experts_output[i](h))
-                # expert_outputs is a list of tensors of shape (batch_size, 1)
+                    out = self.experts_output[i](h)
+                    expert_outputs.append(out)
+
                 # Concatenate expert outputs along dimension 1
                 expert_outputs = torch.cat(expert_outputs, dim=1)  # Shape: (batch_size, num_U)
 
@@ -141,7 +130,6 @@ class MixtureOfExpertsTrainer:
         optimizer = optim.Adam(self.model.parameters(), lr=0.001)
 
         self.train_losses = []
-        self.val_losses = []
 
         for epoch in range(self.num_epochs):
             self.model.train()
@@ -156,18 +144,7 @@ class MixtureOfExpertsTrainer:
             epoch_train_loss /= len(self.train_loader.dataset)
             self.train_losses.append(epoch_train_loss)
 
-            # Validation
-            self.model.eval()
-            epoch_val_loss = 0.0
-            with torch.no_grad():
-                for batch_C2, batch_all, batch_y in self.val_loader:
-                    outputs = self.model(batch_C2, batch_all)
-                    loss = criterion(outputs, batch_y)
-                    epoch_val_loss += loss.item() * batch_C2.size(0)
-            epoch_val_loss /= len(self.val_loader.dataset)
-            self.val_losses.append(epoch_val_loss)
-
-            print(f"Epoch {epoch+1}/{self.num_epochs}, Training Loss: {epoch_train_loss:.4f}, Validation Loss: {epoch_val_loss:.4f}")
+            print(f"Epoch {epoch+1}/{self.num_epochs}, Training Loss: {epoch_train_loss:.4f}")
 
     def evaluate_model(self):
         # Predict on test data
@@ -188,24 +165,25 @@ class MixtureOfExpertsTrainer:
         return mse_test, r2_test
 
     def plot_results(self):
-        # Plot training and validation loss
+        # Plot training loss
         plt.figure()
         plt.plot(self.train_losses, label='Training Loss')
-        plt.plot(self.val_losses, label='Validation Loss')
         plt.title('Loss During Training')
         plt.xlabel('Epoch')
         plt.ylabel('MSE Loss')
         plt.legend()
         plt.savefig(f'./marginalizing/loss_during_training_{self.data_len}.png')
+        plt.close()
 
         # Plot actual vs predicted
-        plt.figure(figsize=(6,6))
+        plt.figure(figsize=(6, 6))
         plt.scatter(self.y_test_numpy, self.y_pred_test, alpha=0.5)
         plt.xlabel('Actual R')
         plt.ylabel('Predicted R')
-        plt.title('Actual vs Predicted R on Test Data')
+        plt.title('Actual vs. Predicted R on Test Data')
         plt.plot([0,1],[0,1], 'r--') 
         plt.savefig(f'./marginalizing/actual_vs_predicted_{self.data_len}.png')
+        plt.close()
 
         # Residuals
         residuals = self.y_test_numpy - self.y_pred_test
@@ -215,16 +193,7 @@ class MixtureOfExpertsTrainer:
         plt.ylabel('Frequency')
         plt.title('Residuals Distribution on Test Set')
         plt.savefig(f'./marginalizing/residuals_distribution_{self.data_len}.png')
+        plt.close()
 
     def plotting_data(self):
         return self.y_test_numpy, self.y_pred_test
-    
-    def plot_losses(self):
-        plt.figure()
-        plt.plot(self.train_losses, label='Training Loss')
-        plt.plot(self.val_losses, label='Validation Loss')
-        plt.title('Loss During Training')
-        plt.xlabel('Epoch')
-        plt.ylabel('MSE Loss')
-        plt.legend()
-        plt.savefig(f'./marginalizing/loss_during_training_{self.data_len}.png')

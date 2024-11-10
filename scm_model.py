@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-np.random.seed(4)
 
 def generate_data(N: int) -> pd.DataFrame:
     # User types

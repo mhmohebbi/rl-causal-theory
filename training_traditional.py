@@ -36,9 +36,27 @@ class MLPRegressorTrainer:
 
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X_final, y, test_size=0.2, random_state=42)
 
+        # Convert data to numpy arrays
+        self.X_train = self.X_train.astype(np.float32)
+        self.X_test = self.X_test.astype(np.float32)
+        self.y_train = self.y_train.astype(np.float32)
+        self.y_test = self.y_test.astype(np.float32)
+
     def train_model(self):
-        self.model = MLPRegressor(hidden_layer_sizes=(100, 50), activation='relu',
-                                  solver='adam', max_iter=500, random_state=42)
+        self.model = MLPRegressor(
+            hidden_layer_sizes=(100, 50),
+            activation='relu',
+            solver='adam',
+            max_iter=20,
+            batch_size=32,
+            learning_rate='constant',
+            learning_rate_init=0.001,
+            tol=0.0,
+            n_iter_no_change=50,
+            alpha=0.0, 
+            verbose=True,
+            random_state=42
+        )
         self.model.fit(self.X_train, self.y_train)
 
     def evaluate_model(self):
@@ -64,6 +82,7 @@ class MLPRegressorTrainer:
         plt.title('Actual vs. Predicted R on Test Set')
         plt.plot([0, 1], [0, 1], 'r--')
         plt.savefig(f'./traditional/actual_vs_predicted_{self.data_len}.png')
+        plt.close()
 
         residuals = self.y_test - self.y_pred_test
 
@@ -73,6 +92,7 @@ class MLPRegressorTrainer:
         plt.ylabel('Frequency')
         plt.title('Residuals Distribution on Test Set')
         plt.savefig(f'./traditional/residuals_distribution_{self.data_len}.png')
-
+        plt.close()
+        
     def plotting_data(self):
         return self.y_test, self.y_pred_test

@@ -1,5 +1,3 @@
-import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -8,20 +6,7 @@ import FrEIA.framework as Ff
 import FrEIA.modules as Fm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
-import random
 import matplotlib.pyplot as plt
-
-def set_seed(seed):
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
-    np.random.seed(seed)
-    random.seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-
-# Set the seed for reproducibility
-set_seed(42)
 
 class NormalizingFlowsTrainer:
     def __init__(self, data):
