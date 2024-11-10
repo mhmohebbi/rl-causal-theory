@@ -3,6 +3,7 @@ from training_simple import SimpleNNTrainer
 from training_marginalize import MixtureOfExpertsTrainer
 from training_flows import NormalizingFlowsTrainer
 from scm_model import generate_data
+from confounding_advertising_env import AdvertisingEnv
 import numpy as np
 import pandas as pd
 import torch
@@ -69,7 +70,7 @@ def reward_regression_experiment():
     plt.tight_layout()
     plt.savefig('./metrics.png')
 
-def counterfactual_experiment():
+def data_aug_experiment():
     data = generate_data(2000)
 
     n_flows = NormalizingFlowsTrainer(data)
@@ -132,6 +133,59 @@ def counterfactual_experiment():
     plt.savefig('./counterfactual_results/actual_vs_predicted.png')
     plt.close()
 
+def counterfactual_experiment():
+    data = generate_data(3000)
+
+    n_flows = NormalizingFlowsTrainer(data)
+    X, R = n_flows.preprocess_data()
+    n_flows.train_model()
+    n_flows.evaluate_model()
+    n_flows.plot_results()
+
+    env = AdvertisingEnv()
+    context, _ = env.reset()
+    done = False
+
+    r_values = []
+    n = 1000
+    while n > 0:
+        action = env.action_space.sample()  # Randomly select an action
+        context, reward, done, _, _ = env.step(action)
+        bid = env.bid_values[action]
+
+        x = torch.cat([torch.tensor(context, dtype=torch.float32).unsqueeze(0), torch.tensor([bid], dtype=torch.float32).unsqueeze(0)], dim=1)
+        r = torch.tensor([reward], dtype=torch.float32).unsqueeze(0)
+        # get counterfactual outcome
+        a_prime = np.random.choice([a for a in env.bid_values if a != bid])
+        r_prime = n_flows.counterfactual_outcome(x, r, a_prime)
+
+        action_prime = np.where(env.bid_values == a_prime)[0][0]
+        context, reward, done, _, _ = env.step(action_prime)
+        r_values.append((reward, r_prime.item()))
+
+        if done:
+            context, _ = env.reset()
+        n -= 1
+
+    r_values = np.array(r_values)
+    residuals = r_values[:, 0] - r_values[:, 1]
+    plt.figure(figsize=(8, 6))
+    plt.hist(residuals, bins=50, alpha=0.7)
+    plt.xlabel('Residuals')
+    plt.ylabel('Frequency')
+    plt.title('Residuals Distribution')
+    plt.savefig('./counterfactual_results/residuals_distribution.png')
+    plt.close()
+
+    plt.figure(figsize=(8, 6))
+    plt.scatter(r_values[:, 0], r_values[:, 1], alpha=0.5)
+    plt.xlabel('Actual R')
+    plt.ylabel('Counterfactual R')
+    plt.title('Actual vs. Counterfactual R')
+    plt.plot([0, 1], [0, 1], 'r--')
+    plt.savefig('./counterfactual_results/actual_vs_counterfactual.png')
+    plt.close()
+
 def set_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
@@ -144,7 +198,9 @@ def set_seed(seed):
 if __name__ == '__main__':
     set_seed(0)
 
-    reward_regression_experiment()
-    print("Reward regression experiment completed.")
+    # reward_regression_experiment()
+    # print("Reward regression experiment completed.")
+    # data_aug_experiment()
+    # print("Data augmentation experiment completed.")
     counterfactual_experiment()
     print("Counterfactual experiment completed.")

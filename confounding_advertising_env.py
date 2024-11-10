@@ -2,8 +2,6 @@ import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.utils import seeding
 import numpy as np
-import csv
-import os
 from constants import *
 
 class AdvertisingEnv(gym.Env):
@@ -98,16 +96,16 @@ class AdvertisingEnv(gym.Env):
         return 1 / (1 + np.exp(-click_score)) # Sigmoid function
     
 # To use the environment
-if __name__ == "__main__":
-    env = AdvertisingEnv()
-    state, _ = env.reset()
-    done = False
+# if __name__ == "__main__":
+#     env = AdvertisingEnv()
+#     state, _ = env.reset()
+#     done = False
 
-    x = 10
-    while x > 0:
-        action = env.action_space.sample()  # Randomly select an action
-        state, reward, done, _, _ = env.step(action)
-        print(f"State: {state}, Reward: {reward}")
-        if done:
-            state, _ = env.reset()
-        x -= 1
+#     x = 10
+#     while x > 0:
+#         action = env.action_space.sample()  # Randomly select an action
+#         state, reward, done, _, _ = env.step(action)
+#         print(f"State: {state}, Reward: {reward}")
+#         if done:
+#             state, _ = env.reset()
+#         x -= 1
