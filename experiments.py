@@ -144,7 +144,7 @@ def set_seed(seed):
 if __name__ == '__main__':
     set_seed(0)
 
-    # reward_regression_experiment()
-    # print("Reward regression experiment completed.")
+    reward_regression_experiment()
+    print("Reward regression experiment completed.")
     counterfactual_experiment()
     print("Counterfactual experiment completed.")

@@ -7,6 +7,7 @@ import FrEIA.modules as Fm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 import matplotlib.pyplot as plt
+from constants import feature_category_to_index
 
 class NormalizingFlowsTrainer:
     def __init__(self, data):
@@ -29,7 +30,7 @@ class NormalizingFlowsTrainer:
         categorical_columns = ['TimeOfDay', 'DayOfWeek', 'Seasonality', 'Age', 'Gender', 'Location', 'PurchaseHistory', 'DeviceType']
 
         for col in categorical_columns:
-            self.data[col] = self.data[col].astype('category').cat.codes
+            self.data[col] = self.data[col].apply(lambda x: feature_category_to_index[x])
 
         X = torch.tensor(self.data.drop(columns=['R']).values, dtype=torch.float32)
         R = torch.tensor(self.data['R'].values, dtype=torch.float32).unsqueeze(1)
