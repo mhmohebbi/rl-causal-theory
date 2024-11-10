@@ -99,6 +99,9 @@ def generate_data(N: int) -> pd.DataFrame:
         
         gender = C2_samples['Gender'][i]
         g += w_C2['Gender'][gender]
+
+        location = C2_samples['Location'][i]
+        g += w_C2['Location'][location]
         
         purchase_history = C2_samples['PurchaseHistory'][i]
         g += w_C2['PurchaseHistory'][purchase_history]

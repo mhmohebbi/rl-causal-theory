@@ -20,6 +20,7 @@ w_C1 = {
 w_C2 = {
     'Age': {'18-24': 0.1, '25-34': 0.05, '35-44': 0.0, '45-54': -0.05, '55+': -0.2},
     'Gender': {'Male': 0.05, 'Female': -0.05},
+    'Location': {'North': 0.1, 'South': 0.0, 'East': 0.1, 'West': -0.2},
     'PurchaseHistory': {'No purchases': -0.3, '1-5 purchases': -0.1, '6-10 purchases': 0.1, '10+ purchases': 0.3},
     'DeviceType': {'Mobile': 0.3, 'Desktop': 0.0, 'Tablet': -0.2}
 }
