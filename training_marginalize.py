@@ -160,7 +160,7 @@ class MixtureOfExpertsTrainer:
         mse_test = mean_squared_error(self.y_test_numpy, self.y_pred_test)
         r2_test = r2_score(self.y_test_numpy, self.y_pred_test)
 
-        print(f"Testing MSE: {mse_test:.4f}, R2: {r2_test:.4f}")
+        print(f"Testing MSE: {mse_test:.4f}, R^2: {r2_test:.4f}")
 
         return mse_test, r2_test
 

@@ -216,5 +216,5 @@ def generate_data(N: int) -> pd.DataFrame:
     plt.xlabel('P_click')
     plt.ylabel('Frequency')
     plt.savefig(f'./p_clicks/P_click_{N}.png')
-
+    plt.close()
     return data_observed

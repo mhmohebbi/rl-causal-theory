@@ -19,7 +19,7 @@ class MLPRegressorTrainer:
         self.y_pred_train = None
         self.y_pred_test = None
 
-    def preprocess_data(self):
+    def preprocess_data(self, test_indices=None):
         X = self.data[['A', 'TimeOfDay', 'DayOfWeek', 'Seasonality', 'Age', 'Gender', 'Location',
                        'PurchaseHistory', 'DeviceType']]
         y = self.data['R']
@@ -34,7 +34,13 @@ class MLPRegressorTrainer:
         X_numeric = X.drop(columns=categorical_features).reset_index(drop=True)
         X_final = pd.concat([X_numeric, X_encoded_df], axis=1)
 
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X_final, y, test_size=0.2, random_state=42)
+        if test_indices is not None:
+            self.X_train = X_final.loc[~X_final.index.isin(test_indices)]
+            self.X_test = X_final.loc[X_final.index.isin(test_indices)]
+            self.y_train = y.loc[~y.index.isin(test_indices)]
+            self.y_test = y.loc[y.index.isin(test_indices)]
+        else:
+            self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X_final, y, test_size=0.2, random_state=42)
 
         # Convert data to numpy arrays
         self.X_train = self.X_train.astype(np.float32)

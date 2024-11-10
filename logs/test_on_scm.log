@@ -1,0 +1,81 @@
+   TimeOfDay DayOfWeek Seasonality  ... DeviceType     A         R
+0    Morning   Tuesday      Summer  ...     Mobile  1.00  0.654279
+1  Afternoon   Tuesday        Fall  ...     Tablet  0.20  0.477280
+2  Afternoon   Tuesday        Fall  ...     Mobile  0.15  0.483442
+3    Morning  Thursday      Summer  ...    Desktop  0.30  0.578224
+4    Evening  Thursday      Winter  ...    Desktop  0.40  0.656014
+
+[5 rows x 10 columns]
+Epoch 1/20, Loss: 0.0676
+Epoch 2/20, Loss: 0.0296
+Epoch 3/20, Loss: 0.0171
+Epoch 4/20, Loss: 0.0050
+Epoch 5/20, Loss: 0.0110
+Epoch 6/20, Loss: 0.0121
+Epoch 7/20, Loss: 0.0128
+Epoch 8/20, Loss: 0.0079
+Epoch 9/20, Loss: 0.0080
+Epoch 10/20, Loss: 0.0075
+Epoch 11/20, Loss: 0.0065
+Epoch 12/20, Loss: 0.0053
+Epoch 13/20, Loss: 0.0069
+Epoch 14/20, Loss: 0.0047
+Epoch 15/20, Loss: 0.0098
+Epoch 16/20, Loss: 0.0084
+Epoch 17/20, Loss: 0.0067
+Epoch 18/20, Loss: 0.0059
+Epoch 19/20, Loss: 0.0027
+Epoch 20/20, Loss: 0.0037
+MSE: 0.0049, R^2: 0.3185
+Iteration 1, loss = 0.00673848
+Iteration 2, loss = 0.00250684
+Iteration 3, loss = 0.00205671
+Iteration 4, loss = 0.00181603
+Iteration 5, loss = 0.00157126
+Iteration 6, loss = 0.00146575
+Iteration 7, loss = 0.00147306
+Iteration 8, loss = 0.00124790
+Iteration 9, loss = 0.00119198
+Iteration 10, loss = 0.00107232
+Iteration 11, loss = 0.00106883
+Iteration 12, loss = 0.00096887
+Iteration 13, loss = 0.00091979
+Iteration 14, loss = 0.00084254
+Iteration 15, loss = 0.00081210
+Iteration 16, loss = 0.00075847
+Iteration 17, loss = 0.00072864
+Iteration 18, loss = 0.00068176
+Iteration 19, loss = 0.00075865
+Iteration 20, loss = 0.00064899
+
+MSE and R^2 for the traditional model:
+Training MSE: 0.0014, R^2: 0.7773
+Testing MSE: 0.0051, R^2: 0.2847
+
+Iteration 1, loss = 0.00149728
+Iteration 2, loss = 0.00025320
+Iteration 3, loss = 0.00014537
+Iteration 4, loss = 0.00010354
+Iteration 5, loss = 0.00008033
+Iteration 6, loss = 0.00006820
+Iteration 7, loss = 0.00005199
+Iteration 8, loss = 0.00004962
+Iteration 9, loss = 0.00004463
+Iteration 10, loss = 0.00003640
+Iteration 11, loss = 0.00003417
+Iteration 12, loss = 0.00002987
+Iteration 13, loss = 0.00003054
+Iteration 14, loss = 0.00002685
+Iteration 15, loss = 0.00002924
+Iteration 16, loss = 0.00002617
+Iteration 17, loss = 0.00002885
+Iteration 18, loss = 0.00002466
+Iteration 19, loss = 0.00002378
+Iteration 20, loss = 0.00003239
+
+MSE and R^2 for the traditional model on the augmented data:
+Training MSE: 0.0000, R^2: 0.9819
+Testing MSE: 0.0042, R^2: 0.3540
+
+Old Data length: 2000, New Data length: 10000
+Counterfactual experiment completed.
