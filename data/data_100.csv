@@ -1,4 +1,4 @@
-U,TimeOfDay,DayOfWeek,Seasonality,Age,Gender,Location,PurchaseHistory,DeviceType,A,P_click,R
+U,TimeOfDay,DayOfWeek,Seasonality,Age,Gender,Location,PurchaseHistory,DeviceType,A,R,I
 1,Night,Thursday,Summer,25-34,Male,West,1-5 purchases,Mobile,0.35,0.5436141573649553,0
 4,Morning,Friday,Fall,18-24,Female,South,No purchases,Mobile,1.0,0.7485774312897285,1
 2,Afternoon,Tuesday,Winter,18-24,Male,East,No purchases,Mobile,0.25,0.53927739232395,1

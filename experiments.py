@@ -3,12 +3,16 @@ from training_simple import SimpleNNTrainer
 from training_marginalize import MixtureOfExpertsTrainer
 from training_flows import NormalizingFlowsTrainer
 from scm_model import generate_data
-from confounding_advertising_env import AdvertisingEnv
 import numpy as np
 import pandas as pd
 import torch
 import random
 import matplotlib.pyplot as plt
+from confounding_advertising_env import AdvertisingEnv
+from offline_dqn.offline_dqn import OfflineDQN
+from stable_baselines3.dqn.policies import DQNPolicy
+from stable_baselines3.common.buffers import ReplayBuffer
+from stable_baselines3.common.save_util import load_from_pkl, save_to_pkl
 
 def reward_regression_experiment():
     data_lens = [100, 250, 500, 1000, 5000, 10000]
@@ -186,6 +190,134 @@ def counterfactual_experiment():
     plt.savefig('./counterfactual_results/actual_vs_counterfactual.png')
     plt.close()
 
+def policy_experiment():
+    data = generate_data(3000)
+
+    # train a normalizing flow model
+    n_flows = NormalizingFlowsTrainer(data)
+    X, R = n_flows.preprocess_data()
+    n_flows.train_model()
+    n_flows.evaluate_model()
+
+    # Helper Methods
+    def evaluate_model(env, model, episodes=100):
+        cumulative_rewards = []
+        total_reward = 0
+        state, _ = env.reset()
+        done = False
+        episode_count = episodes
+
+        while episode_count > 0:
+            action, _states = model.predict(state, deterministic=True)
+            state, reward, done, _, _ = env.step(action)
+            total_reward += reward
+            cumulative_rewards.append(total_reward / (episodes - episode_count + 1))
+            if done:
+                state, _ = env.reset()
+                episode_count -= 1
+
+        return np.array(cumulative_rewards)
+    
+    def generate_new_buffer_data(obs, original_action, original_reward, a_prime, r_prime):
+        original_action[0][0] = a_prime
+        original_reward[0] = r_prime
+        new_obs = obs
+        done = True
+        infos = [{}]
+        return obs, new_obs, original_action, original_reward, done, infos
+
+    def get_augmented_buffer(path, env, flow_model):
+        replay_buffer = load_from_pkl(path)
+
+        size = replay_buffer.buffer_size
+        action_space = np.round(np.arange(0.05, 1.05, 0.05), 2)
+        augmented_data = []
+
+        for i in range(size):
+            context = replay_buffer.observations[i][0]
+            action = replay_buffer.actions[i][0][0]
+            reward = replay_buffer.rewards[i][0]
+
+            bid_amount = env.bid_values[action]
+            feature = np.append(context, bid_amount)
+
+            counterfactual_action_space = action_space[action_space != bid_amount]
+            for a_prime in counterfactual_action_space:
+                r_prime = flow_model.counterfactual_outcome(
+                        torch.tensor(feature, dtype=torch.float32).unsqueeze(0),
+                        torch.tensor([reward], dtype=torch.float32).unsqueeze(0),
+                        a_prime
+                    )
+                new_data = generate_new_buffer_data(
+                        replay_buffer.observations[i].copy(),
+                        replay_buffer.actions[i].copy(),
+                        replay_buffer.rewards[i].copy(), 
+                        a_prime, 
+                        r_prime
+                    )
+                augmented_data.append(new_data)
+
+        new_buffer = ReplayBuffer(size + len(augmented_data), observation_space=env.observation_space, action_space=env.action_space)
+
+        for i in range(size):
+            new_buffer.add(
+                replay_buffer.observations[i],
+                replay_buffer.next_observations[i],
+                replay_buffer.actions[i],
+                replay_buffer.rewards[i],
+                replay_buffer.dones[i],
+                [{}]
+            )
+
+        for data in augmented_data:
+            new_buffer.add(*data)
+
+        return new_buffer
+    
+    # train an offline DQN model using existing offline data
+    env = AdvertisingEnv()
+    offline_dqn_base = OfflineDQN(DQNPolicy, env,
+                            learning_rate=5e-3,
+                            buffer_size=2000,
+                            batch_size=512,
+                            gamma=0.0,
+                            gradient_steps=50,
+                            verbose=1,
+                            tensorboard_log="./offline_dqn/logs/base/",
+                        )
+    offline_dqn_base.load_replay_buffer("./offline_dqn/advertising_scm_2000")
+    offline_dqn_base.learn(2000)
+    offline_rewards_base = evaluate_model(env, offline_dqn_base)
+
+    # augment the offline data using counterfactual outcomes
+    augmented_buffer = get_augmented_buffer("./offline_dqn/advertising_scm_2000", env, n_flows)
+    save_to_pkl("./offline_dqn/advertising_scm_2000_augmented", augmented_buffer)
+
+    # train an offline DQN model using augmented offline data
+    offline_dqn_augmented = OfflineDQN(DQNPolicy, env,
+                            learning_rate=5e-3,
+                            buffer_size=40000,
+                            batch_size=512,
+                            gamma=0.0,
+                            gradient_steps=50,
+                            verbose=1,
+                            tensorboard_log="./offline_dqn/logs/aug/",
+                        )
+    offline_dqn_augmented.load_replay_buffer("./offline_dqn/advertising_scm_2000_augmented")
+    offline_dqn_augmented.learn(40000)
+    offline_rewards_augmented = evaluate_model(env, offline_dqn_augmented)
+
+    plt.clf()
+    plt.figure(figsize=(8, 6))
+    plt.plot(offline_rewards_base, label='Base')
+    plt.plot(offline_rewards_augmented, label='Augmented')
+    plt.xlabel('Episodes')
+    plt.ylabel('Average Reward')
+    plt.title('Average Reward per Episode')
+    plt.legend()
+    plt.savefig('./offline_dqn/results.png')
+    plt.close()
+
 def set_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
@@ -202,5 +334,7 @@ if __name__ == '__main__':
     # print("Reward regression experiment completed.")
     # data_aug_experiment()
     # print("Data augmentation experiment completed.")
-    counterfactual_experiment()
-    print("Counterfactual experiment completed.")
+    # counterfactual_experiment()
+    # print("Counterfactual experiment completed.")
+    policy_experiment()
+    print("Policy experiment completed.")

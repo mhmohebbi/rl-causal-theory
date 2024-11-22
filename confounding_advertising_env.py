@@ -2,10 +2,13 @@ import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.utils import seeding
 import numpy as np
+import pickle
+from stable_baselines3.common.buffers import ReplayBuffer
 from constants import *
 
+
 class AdvertisingEnv(gym.Env):
-    def __init__(self):
+    def __init__(self, save_buffer=False):
         super(AdvertisingEnv, self).__init__()
 
         # Set a fixed seed for reproducibility
@@ -20,6 +23,10 @@ class AdvertisingEnv(gym.Env):
 
         self.U = None
         self.state = None
+
+        self.save_buffer = save_buffer
+        self.buffer = ReplayBuffer(2000, observation_space=self.observation_space, action_space=self.action_space)
+        self.buffer_saved = False
 
     def sample(self):
         u = np.random.choice(user_types)
@@ -75,6 +82,16 @@ class AdvertisingEnv(gym.Env):
         # Each episode is one step, hence it's always done
         done = True
         info = {}
+
+        # Collect data
+        if self.save_buffer:
+            self.buffer.add(self.state, self.state, action, reward, done, [{}]) # update buffer for offline RL with pkls
+            if self.buffer.full and not self.buffer_saved:
+                print("Buffer full, saving to .pkl file")
+                with open(f"./advertising_scm_2000.pkl", 'wb') as file:
+                    pickle.dump(self.buffer, file)
+                self.buffer_saved = True
+
         return self.state, reward, done, False, info
 
     def _calculate_click_probability(self, context, bid_amount):
@@ -95,13 +112,13 @@ class AdvertisingEnv(gym.Env):
         click_score = g + theta_u + epsilon
         return 1 / (1 + np.exp(-click_score)) # Sigmoid function
     
-# To use the environment
+# # To use the environment
 # if __name__ == "__main__":
 #     env = AdvertisingEnv()
 #     state, _ = env.reset()
 #     done = False
 
-#     x = 10
+#     x = 2222
 #     while x > 0:
 #         action = env.action_space.sample()  # Randomly select an action
 #         state, reward, done, _, _ = env.step(action)
