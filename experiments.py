@@ -191,6 +191,15 @@ def counterfactual_experiment():
     plt.close()
 
 def policy_experiment():
+    """
+    1. A pretrained Normalizing Flow for CF
+    2. Offline Dataset that is a ReplayBuffer
+    3. Trained for a Base offline DQN
+    4. Augment the offline dataset using the Normalizing Flow
+    5. Append that new data to a new ReplayBuffer
+    6. Train a new offline DQN on the augmented dataset
+    7. Compare in evaluation in an online simulator
+    """
     data = generate_data(3000)
 
     # train a normalizing flow model
