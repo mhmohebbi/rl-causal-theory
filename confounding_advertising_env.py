@@ -8,7 +8,7 @@ from constants import *
 
 
 class AdvertisingEnv(gym.Env):
-    def __init__(self, save_buffer=False):
+    def __init__(self, save_buffer=False, buffer_size=2000):
         super(AdvertisingEnv, self).__init__()
 
         # Set a fixed seed for reproducibility
@@ -25,7 +25,8 @@ class AdvertisingEnv(gym.Env):
         self.state = None
 
         self.save_buffer = save_buffer
-        self.buffer = ReplayBuffer(2000, observation_space=self.observation_space, action_space=self.action_space)
+        self.buffer_size = buffer_size
+        self.buffer = ReplayBuffer(self.buffer_size, observation_space=self.observation_space, action_space=self.action_space)
         self.buffer_saved = False
 
     def sample(self):
@@ -88,7 +89,7 @@ class AdvertisingEnv(gym.Env):
             self.buffer.add(self.state, self.state, action, reward, done, [{}]) # update buffer for offline RL with pkls
             if self.buffer.full and not self.buffer_saved:
                 print("Buffer full, saving to .pkl file")
-                with open(f"./advertising_scm_2000.pkl", 'wb') as file:
+                with open(f"./offline_dqn/data/advertising_scm_{self.buffer_size}.pkl", 'wb') as file:
                     pickle.dump(self.buffer, file)
                 self.buffer_saved = True
 
@@ -113,16 +114,16 @@ class AdvertisingEnv(gym.Env):
         return 1 / (1 + np.exp(-click_score)) # Sigmoid function
     
 # # To use the environment
-# if __name__ == "__main__":
-#     env = AdvertisingEnv()
-#     state, _ = env.reset()
-#     done = False
+if __name__ == "__main__":
+    env = AdvertisingEnv(True, 3500)
+    state, _ = env.reset()
+    done = False
 
-#     x = 2222
-#     while x > 0:
-#         action = env.action_space.sample()  # Randomly select an action
-#         state, reward, done, _, _ = env.step(action)
-#         print(f"State: {state}, Reward: {reward}")
-#         if done:
-#             state, _ = env.reset()
-#         x -= 1
+    x = 4600
+    while x > 0:
+        action = env.action_space.sample()  # Randomly select an action
+        state, reward, done, _, _ = env.step(action)
+        print(f"State: {state}, Reward: {reward}")
+        if done:
+            state, _ = env.reset()
+        x -= 1

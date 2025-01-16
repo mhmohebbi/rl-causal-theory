@@ -190,7 +190,7 @@ def counterfactual_experiment():
     plt.savefig('./counterfactual_results/actual_vs_counterfactual.png')
     plt.close()
 
-def policy_experiment():
+def policy_experiment(sample_size):
     """
     1. A pretrained Normalizing Flow for CF
     2. Offline Dataset that is a ReplayBuffer
@@ -200,7 +200,7 @@ def policy_experiment():
     6. Train a new offline DQN on the augmented dataset
     7. Compare in evaluation in an online simulator
     """
-    data = generate_data(3000)
+    data = generate_data(sample_size)
 
     # train a normalizing flow model
     n_flows = NormalizingFlowsTrainer(data)
@@ -225,7 +225,9 @@ def policy_experiment():
                 state, _ = env.reset()
                 episode_count -= 1
 
-        return np.array(cumulative_rewards)
+        cumulative_avg_reward = np.mean(cumulative_rewards)
+        cumulative_std_reward = np.std(cumulative_rewards)
+        return cumulative_avg_reward, cumulative_std_reward
     
     def generate_new_buffer_data(obs, original_action, original_reward, a_prime, r_prime):
         original_action[0][0] = a_prime
@@ -287,45 +289,37 @@ def policy_experiment():
     env = AdvertisingEnv()
     offline_dqn_base = OfflineDQN(DQNPolicy, env,
                             learning_rate=5e-3,
-                            buffer_size=2000,
+                            buffer_size=sample_size,
                             batch_size=512,
                             gamma=0.0,
                             gradient_steps=50,
                             verbose=1,
                             tensorboard_log="./offline_dqn/logs/base/",
                         )
-    offline_dqn_base.load_replay_buffer("./offline_dqn/advertising_scm_2000")
-    offline_dqn_base.learn(2000)
-    offline_rewards_base = evaluate_model(env, offline_dqn_base)
+    offline_dqn_base.load_replay_buffer(f"./offline_dqn/data/advertising_scm_{sample_size}")
+    offline_dqn_base.learn(sample_size)
+    offline_rewards_base, offline_std_base = evaluate_model(env, offline_dqn_base)
 
     # augment the offline data using counterfactual outcomes
-    augmented_buffer = get_augmented_buffer("./offline_dqn/advertising_scm_2000", env, n_flows)
-    save_to_pkl("./offline_dqn/advertising_scm_2000_augmented", augmented_buffer)
+    # augmented_buffer = get_augmented_buffer(f"./offline_dqn/data/advertising_scm_{sample_size}", env, n_flows)
+    # assert augmented_buffer.buffer_size >= sample_size*20
+    # save_to_pkl(f"./offline_dqn/data/advertising_scm_{sample_size}_augmented", augmented_buffer)
 
     # train an offline DQN model using augmented offline data
     offline_dqn_augmented = OfflineDQN(DQNPolicy, env,
                             learning_rate=5e-3,
-                            buffer_size=40000,
+                            buffer_size=sample_size*20,
                             batch_size=512,
                             gamma=0.0,
                             gradient_steps=50,
                             verbose=1,
                             tensorboard_log="./offline_dqn/logs/aug/",
                         )
-    offline_dqn_augmented.load_replay_buffer("./offline_dqn/advertising_scm_2000_augmented")
-    offline_dqn_augmented.learn(40000)
-    offline_rewards_augmented = evaluate_model(env, offline_dqn_augmented)
+    offline_dqn_augmented.load_replay_buffer(f"./offline_dqn/data/advertising_scm_{sample_size}_augmented")
+    offline_dqn_augmented.learn(sample_size*20)
+    offline_rewards_augmented, offline_std_augmented = evaluate_model(env, offline_dqn_augmented)
 
-    plt.clf()
-    plt.figure(figsize=(8, 6))
-    plt.plot(offline_rewards_base, label='Base')
-    plt.plot(offline_rewards_augmented, label='Augmented')
-    plt.xlabel('Episodes')
-    plt.ylabel('Average Reward')
-    plt.title('Average Reward per Episode')
-    plt.legend()
-    plt.savefig('./offline_dqn/results.png')
-    plt.close()
+    return offline_rewards_base, offline_std_base, offline_rewards_augmented, offline_std_augmented
 
 def set_seed(seed):
     torch.manual_seed(seed)
@@ -345,5 +339,38 @@ if __name__ == '__main__':
     # print("Data augmentation experiment completed.")
     # counterfactual_experiment()
     # print("Counterfactual experiment completed.")
-    policy_experiment()
+
+    sample_sizes = [200, 700, 1000, 1500, 2000, 3500, 5000, 10000]
+
+    num_runs = 50
+
+    base_rewards = []
+    aug_rewards = []
+
+    for sample_size in sample_sizes:
+        base_runs = []
+        aug_runs = []
+        
+        for _ in range(num_runs):
+            base_reward, base_std, aug_reward, aug_std = policy_experiment(sample_size)
+            base_runs.append(base_reward)
+            aug_runs.append(aug_reward)
+        
+        avg_base_reward = np.mean(base_runs)
+        avg_aug_reward = np.mean(aug_runs)
+        
+        base_rewards.append(avg_base_reward)
+        aug_rewards.append(avg_aug_reward)
+
+    # Plot the averaged results
+    plt.clf()
+    plt.figure(figsize=(8, 6))
+    plt.plot(sample_sizes, base_rewards, label='Original (Averaged)')
+    plt.plot(sample_sizes, aug_rewards, label='Augmented (Averaged)')
+    plt.xlabel('Sample Size')
+    plt.ylabel('Cumulative Average Reward')
+    plt.title('Offline DQN using Original Data vs. Counterfactual Data per Sample Size')
+    plt.legend()
+    plt.savefig('./offline_dqn/results.png')
+    plt.close()
     print("Policy experiment completed.")
