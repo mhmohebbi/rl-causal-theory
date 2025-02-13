@@ -1,0 +1,362 @@
+/usr/bin/python3 /Users/hosseinmohebbi/Desktop/code/rl-causal-theory/adult_dataset.py
+hosseinmohebbi@Hosseins-Air rl-causal-theory % /usr/bin/python3 /Users/hosseinmohebbi/Desktop/code/rl-causal-theory/adult_dataset.py
+/Users/hosseinmohebbi/Library/Python/3.9/lib/python/site-packages/torch/nn/init.py:511: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+   age  workclass  education-num  marital-status  occupation  relationship  race  sex  capital-gain  capital-loss  native-country  income
+0   39          7             13               4           1             1     4    1          2174             0              39       0
+1   50          6             13               2           4             0     4    1             0             0              39       0
+2   38          4              9               0           6             1     4    1             0             0              39       0
+3   53          4              7               2           6             0     2    1             0             0              39       0
+4   28          4             13               2          10             5     2    0             0             0               5       0
+0    0.397959
+1    0.122449
+2    0.397959
+3    0.397959
+4    0.397959
+Name: hours-per-week, dtype: float64
+Epoch [1/50], Loss: 181.3977
+Epoch [2/50], Loss: 49.5281
+Epoch [3/50], Loss: 113.3547
+Epoch [4/50], Loss: 2.7194
+Epoch [5/50], Loss: 15136.0013
+Epoch [6/50], Loss: 116.3320
+Epoch [7/50], Loss: 118.4806
+Epoch [8/50], Loss: 124.7518
+Epoch [9/50], Loss: 134.2713
+Epoch [10/50], Loss: 119.9065
+Epoch [11/50], Loss: 116.0788
+Epoch [12/50], Loss: 131.9046
+Epoch [13/50], Loss: 136.3364
+Epoch [14/50], Loss: 130.3996
+Epoch [15/50], Loss: 115.9237
+Epoch [16/50], Loss: 119.5595
+Epoch [17/50], Loss: 116.8194
+Epoch [18/50], Loss: 125.7811
+Epoch [19/50], Loss: 40.7630
+Epoch [20/50], Loss: 34.5178
+Epoch [21/50], Loss: 12.4405
+Epoch [22/50], Loss: 8.4981
+Epoch [23/50], Loss: 7.0359
+Epoch [24/50], Loss: 5.7662
+Epoch [25/50], Loss: 1.2341
+Epoch [26/50], Loss: 1.9346
+Epoch [27/50], Loss: 1.8046
+Epoch [28/50], Loss: 2.2272
+Epoch [29/50], Loss: 1.8991
+Epoch [30/50], Loss: 1.8294
+Epoch [31/50], Loss: 6.5553
+Epoch [32/50], Loss: -0.0106
+Epoch [33/50], Loss: 0.7234
+Epoch [34/50], Loss: 2.0628
+Epoch [35/50], Loss: 10.2282
+Epoch [36/50], Loss: 11.4832
+Epoch [37/50], Loss: 11.1741
+Epoch [38/50], Loss: 8.8644
+Epoch [39/50], Loss: 8.2674
+Epoch [40/50], Loss: 44.4084
+Epoch [41/50], Loss: 5.7213
+Epoch [42/50], Loss: 4.3134
+Epoch [43/50], Loss: 2.2618
+Epoch [44/50], Loss: 2.7197
+Epoch [45/50], Loss: 42.1795
+Epoch [46/50], Loss: 38.2119
+Epoch [47/50], Loss: 37.6763
+Epoch [48/50], Loss: 38.3259
+Epoch [49/50], Loss: 36.0919
+Epoch [50/50], Loss: 34.8233
+Generated T samples: tensor([[0.6486],
+        [0.4455],
+        [0.7280],
+        [0.1327],
+        [0.1068],
+        [0.2995],
+        [0.6215],
+        [0.3517],
+        [0.4380],
+        [0.1108]], grad_fn=<CopySlices>)
+
+Test MSE: 0.0000, R^2: 1.0000
+/Users/hosseinmohebbi/Library/Python/3.9/lib/python/site-packages/sklearn/neural_network/_multilayer_perceptron.py:1631: DataConversionWarning: A column-vector y was passed when a 1d array was expected. Please change the shape of y to (n_samples, ), for example using ravel().
+  y = column_or_1d(y, warn=True)
+Iteration 1, loss = 3101.04512951
+Iteration 2, loss = 0.76437984
+Iteration 3, loss = 0.58935628
+Iteration 4, loss = 0.44531707
+Iteration 5, loss = 0.29558204
+Iteration 6, loss = 0.20154470
+Iteration 7, loss = 0.14314202
+Iteration 8, loss = 0.46149480
+Iteration 9, loss = 0.89446390
+Iteration 10, loss = 11.73905278
+Iteration 11, loss = 299.25407799
+Iteration 12, loss = 0.04863568
+Iteration 13, loss = 0.04476013
+Iteration 14, loss = 0.04608187
+Iteration 15, loss = 0.03817781
+Iteration 16, loss = 0.40678570
+Iteration 17, loss = 24.88691240
+Iteration 18, loss = 0.07614206
+Iteration 19, loss = 18.34527374
+Iteration 20, loss = 0.09055176
+Iteration 21, loss = 17.32858207
+Iteration 22, loss = 19.57053706
+Iteration 23, loss = 0.17202755
+Iteration 24, loss = 7.14213645
+Iteration 25, loss = 52.91500259
+Iteration 26, loss = 0.02131263
+Iteration 27, loss = 0.06822877
+Iteration 28, loss = 0.13819171
+Iteration 29, loss = 36.72789017
+Iteration 30, loss = 0.11234195
+Iteration 31, loss = 23.05850388
+Iteration 32, loss = 0.33265004
+Iteration 33, loss = 0.03046251
+Iteration 34, loss = 27.12670642
+Iteration 35, loss = 0.61909050
+Iteration 36, loss = 96.98850921
+Iteration 37, loss = 0.31261940
+Iteration 38, loss = 0.01529701
+Iteration 39, loss = 0.03954438
+Iteration 40, loss = 53.40498586
+Iteration 41, loss = 9.33283460
+Iteration 42, loss = 0.01602597
+Iteration 43, loss = 0.01409674
+Iteration 44, loss = 17.88586281
+Iteration 45, loss = 4.86404102
+Iteration 46, loss = 3.52897210
+Iteration 47, loss = 31.96061458
+Iteration 48, loss = 0.01468832
+Iteration 49, loss = 0.06017127
+Iteration 50, loss = 19.05517002
+Iteration 51, loss = 0.58338663
+Iteration 52, loss = 30.14081712
+Iteration 53, loss = 0.01164993
+Iteration 54, loss = 0.01448322
+Iteration 55, loss = 24.51865429
+Iteration 56, loss = 18.61894819
+Iteration 57, loss = 0.12855768
+Iteration 58, loss = 51.55560288
+Iteration 59, loss = 0.00887245
+Iteration 60, loss = 0.02012322
+Iteration 61, loss = 43.41300693
+Iteration 62, loss = 0.01022283
+Iteration 63, loss = 0.01113657
+Iteration 64, loss = 38.50909380
+Iteration 65, loss = 0.02072466
+Iteration 66, loss = 0.16783094
+Iteration 67, loss = 87.00770567
+Iteration 68, loss = 10.57295021
+Iteration 69, loss = 0.01651450
+Iteration 70, loss = 0.01207536
+Iteration 71, loss = 0.01473070
+Iteration 72, loss = 0.52575607
+Iteration 73, loss = 78.79472743
+Iteration 74, loss = 0.02566724
+Iteration 75, loss = 0.03616751
+Iteration 76, loss = 4.43649092
+Iteration 77, loss = 0.11569208
+Iteration 78, loss = 19.99824372
+Iteration 79, loss = 26.84635681
+Iteration 80, loss = 0.36678114
+Iteration 81, loss = 8.67812281
+Iteration 82, loss = 0.04390816
+Iteration 83, loss = 35.24660777
+Iteration 84, loss = 0.15372438
+Iteration 85, loss = 0.75027517
+Iteration 86, loss = 138.08680562
+Iteration 87, loss = 0.11158886
+Iteration 88, loss = 0.05358702
+Iteration 89, loss = 0.05612197
+Iteration 90, loss = 0.01730934
+Iteration 91, loss = 0.02078124
+Iteration 92, loss = 13.80938900
+Iteration 93, loss = 1.11311720
+Iteration 94, loss = 2.60512266
+Iteration 95, loss = 15.10947192
+Iteration 96, loss = 0.04861336
+Iteration 97, loss = 59.68783978
+Iteration 98, loss = 0.07284961
+Iteration 99, loss = 0.05345685
+Iteration 100, loss = 22.48732359
+/Users/hosseinmohebbi/Library/Python/3.9/lib/python/site-packages/sklearn/neural_network/_multilayer_perceptron.py:690: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (100) reached and the optimization hasn't converged yet.
+  warnings.warn(
+Testing MSE: 0.0250, R^2: -0.6286
+/Users/hosseinmohebbi/Library/Python/3.9/lib/python/site-packages/sklearn/neural_network/_multilayer_perceptron.py:1631: DataConversionWarning: A column-vector y was passed when a 1d array was expected. Please change the shape of y to (n_samples, ), for example using ravel().
+  y = column_or_1d(y, warn=True)
+Iteration 1, loss = 2031.63308161
+Iteration 2, loss = 0.65586312
+Iteration 3, loss = 0.35991841
+Iteration 4, loss = 0.13102136
+Iteration 5, loss = 31.44721724
+Iteration 6, loss = 0.40456665
+Iteration 7, loss = 8.86862213
+Iteration 8, loss = 23.05134672
+Iteration 9, loss = 0.03123413
+Iteration 10, loss = 67.43100360
+Iteration 11, loss = 0.03383901
+Iteration 12, loss = 9.63373308
+Iteration 13, loss = 43.79034288
+Iteration 14, loss = 0.02255777
+Iteration 15, loss = 105.87652422
+Iteration 16, loss = 0.01602974
+Iteration 17, loss = 0.01576525
+Iteration 18, loss = 19.05175781
+Iteration 19, loss = 27.96834735
+Iteration 20, loss = 0.03290630
+Iteration 21, loss = 37.41897546
+Iteration 22, loss = 0.02069486
+Iteration 23, loss = 36.10146407
+Iteration 24, loss = 0.67661333
+Iteration 25, loss = 28.01732474
+Iteration 26, loss = 1.37753327
+Iteration 27, loss = 11.81028553
+Iteration 28, loss = 5.13182895
+Iteration 29, loss = 41.16172333
+Iteration 30, loss = 0.01463296
+Iteration 31, loss = 7.35923228
+Iteration 32, loss = 22.99011709
+Iteration 33, loss = 13.07269699
+Iteration 34, loss = 0.02363559
+Iteration 35, loss = 37.68502678
+Iteration 36, loss = 27.95552284
+Iteration 37, loss = 0.00904916
+Iteration 38, loss = 14.75614428
+Iteration 39, loss = 5.32686518
+Iteration 40, loss = 52.94961547
+Iteration 41, loss = 0.01016599
+Iteration 42, loss = 48.03937449
+Iteration 43, loss = 0.06577684
+Iteration 44, loss = 15.59295219
+Iteration 45, loss = 0.03380343
+Iteration 46, loss = 32.30088408
+Iteration 47, loss = 0.02233626
+Iteration 48, loss = 6.58869908
+Iteration 49, loss = 17.56395649
+Iteration 50, loss = 2.09625159
+Iteration 51, loss = 18.27770323
+Iteration 52, loss = 11.86985809
+Iteration 53, loss = 36.95410903
+Iteration 54, loss = 0.03258322
+Iteration 55, loss = 0.01462869
+Iteration 56, loss = 104.10780232
+Iteration 57, loss = 0.01816274
+Iteration 58, loss = 0.01179278
+Iteration 59, loss = 35.35825821
+Iteration 60, loss = 0.01058507
+Iteration 61, loss = 3.13662806
+Iteration 62, loss = 7.78668268
+Iteration 63, loss = 15.13581066
+Iteration 64, loss = 1.31913878
+Iteration 65, loss = 11.25217994
+Iteration 66, loss = 5.97206893
+Iteration 67, loss = 11.64027174
+Iteration 68, loss = 27.51882840
+Iteration 69, loss = 0.01649294
+Iteration 70, loss = 6.72153725
+Iteration 71, loss = 9.44277030
+Iteration 72, loss = 40.52803810
+Iteration 73, loss = 2.98343457
+Iteration 74, loss = 2.08730076
+Iteration 75, loss = 9.18134451
+Iteration 76, loss = 25.04969621
+Iteration 77, loss = 0.03174144
+Iteration 78, loss = 2.92775500
+Iteration 79, loss = 12.27959180
+Iteration 80, loss = 14.90677498
+Iteration 81, loss = 0.08998354
+Iteration 82, loss = 23.89605884
+Iteration 83, loss = 15.34909210
+Iteration 84, loss = 0.04352778
+Iteration 85, loss = 13.33813077
+Iteration 86, loss = 15.83564058
+Iteration 87, loss = 0.01306857
+Iteration 88, loss = 10.82989946
+Training loss did not improve more than tol=0.000000 for 50 consecutive epochs. Stopping.
+Testing MSE: 0.0166, R^2: -0.0787
+
+
+
+
+
+
+
+
+hosseinmohebbi@Hosseins-Air rl-causal-theory % /usr/bin/python3 /Users/hosseinmohebbi/Desktop/code/rl-causal-theory/adult_dataset.py
+/Users/hosseinmohebbi/Library/Python/3.9/lib/python/site-packages/torch/nn/init.py:511: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+   age  workclass  education-num  marital-status  occupation  relationship  race  sex  capital-gain  capital-loss  native-country  income
+0   39          7             13               4           1             1     4    1          2174             0              39       0
+1   50          6             13               2           4             0     4    1             0             0              39       0
+2   38          4              9               0           6             1     4    1             0             0              39       0
+3   53          4              7               2           6             0     2    1             0             0              39       0
+4   28          4             13               2          10             5     2    0             0             0               5       0
+0    0.397959
+1    0.122449
+2    0.397959
+3    0.397959
+4    0.397959
+Name: hours-per-week, dtype: float64
+Epoch [1/50], Loss: 1585645.5722
+Epoch [2/50], Loss: 296.6647
+Epoch [3/50], Loss: 1048.2994
+Epoch [4/50], Loss: 28.2861
+Epoch [5/50], Loss: 14.5652
+Epoch [6/50], Loss: 36.4290
+Epoch [7/50], Loss: 734.5747
+Epoch [8/50], Loss: 18.2213
+Epoch [9/50], Loss: 39.6062
+Epoch [10/50], Loss: 106.0601
+Epoch [11/50], Loss: 1.3746
+Epoch [12/50], Loss: 54.8247
+Epoch [13/50], Loss: 48.6671
+Epoch [14/50], Loss: 79.3313
+Epoch [15/50], Loss: 87.2018
+Epoch [16/50], Loss: 22.8995
+Epoch [17/50], Loss: 88.4106
+Epoch [18/50], Loss: 64.4241
+Epoch [19/50], Loss: 74.9117
+Epoch [20/50], Loss: 30.2253
+Epoch [21/50], Loss: 75.7583
+Epoch [22/50], Loss: 186.9798
+Epoch [23/50], Loss: 11.2349
+Epoch [24/50], Loss: 36.0908
+Epoch [25/50], Loss: 492.1122
+Epoch [26/50], Loss: 70.8274
+Epoch [27/50], Loss: 35.4781
+Epoch [28/50], Loss: 72.4078
+Epoch [29/50], Loss: 40.3722
+Epoch [30/50], Loss: 111.6287
+Epoch [31/50], Loss: 65.3800
+Epoch [32/50], Loss: 49.7999
+Epoch [33/50], Loss: 24.9404
+Epoch [34/50], Loss: 1.8509
+Epoch [35/50], Loss: 0.0749
+Epoch [36/50], Loss: -0.0092
+Epoch [37/50], Loss: 0.0475
+Epoch [38/50], Loss: 0.2483
+Epoch [39/50], Loss: 0.1646
+Epoch [40/50], Loss: 0.1647
+Epoch [41/50], Loss: 0.1675
+Epoch [42/50], Loss: 1.8845
+Epoch [43/50], Loss: -0.0244
+Epoch [44/50], Loss: 0.0305
+Epoch [45/50], Loss: 0.1217
+Epoch [46/50], Loss: 2.0801
+Epoch [47/50], Loss: -0.0327
+Epoch [48/50], Loss: -0.0344
+Epoch [49/50], Loss: 0.0004
+Epoch [50/50], Loss: -0.0340
+Generated T samples: tensor([[ 0.5613],
+        [ 0.4023],
+        [-0.6483],
+        [ 1.0145],
+        [ 1.2478],
+        [ 0.8343],
+        [ 0.2324],
+        [-0.3016],
+        [ 0.0445],
+        [ 0.3247]], grad_fn=<CopySlices>)
+
+Test MSE: 0.0000, R^2: 1.0000
+Testing MSE: 0.0113, R^2: 0.2676
+Testing MSE: 0.0102, R^2: 0.3355
