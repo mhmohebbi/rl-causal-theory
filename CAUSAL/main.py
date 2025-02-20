@@ -7,7 +7,7 @@ import numpy as np
 from cnflow import *
 
 def load_datasets():
-    datasets = [WineQualityDataset()] #, AbaloneDataset()]
+    datasets = [AuctionVerificationDataset(), ParkinsonsTelemonitoringDataset(), WineQualityDataset(), AbaloneDataset()]
     return datasets
 
 def baseline_test(dataset: AbstractDataset, aug=None):
@@ -30,31 +30,18 @@ def baseline_test(dataset: AbstractDataset, aug=None):
     y_pred = xgb_model.predict(X_test)
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 
-    # create a plot
-    plt.figure(figsize=(8, 6))
-    plt.scatter(y_test, y_pred, alpha=0.5)
-    plt.xlabel('Actual')
-    plt.ylabel('Predicted')
-    plt.title(f'Actual vs. Predicted on Test Set of {dataset.name}')
-    plt.plot([0, 50], [0, 50], 'r--')
-    if aug is not None:
-        plt.savefig(f'./CAUSAL/results/baseline_actual_vs_predicted_{dataset.name}_augmented.png')
-    else:
-        plt.savefig(f'./CAUSAL/results/baseline_actual_vs_predicted_{dataset.name}.png')    
-    plt.close()
-
     print("Test MSE: {:.2f}".format(rmse))
-    return xgb_model, rmse
+    return xgb_model, rmse, y_test, y_pred
 
 def train_flow(dataset: AbstractDataset, residual_noise: np.ndarray):
     t_dim = dataset.y_preprocessed.shape[1] # Dimensionality of target T
     f_dim = dataset.X_preprocessed.shape[1] # Dimensionality of features F
     cond_dim = f_dim     # Now conditioning is only on F
-    hidden_dim = 32
+    hidden_dim = 64
     num_coupling_layers = 4
     batch_size = 32
     learning_rate = 1e-3
-    num_epochs = 100
+    num_epochs =75
 
     X_train, X_test, y_train, y_test = dataset.split()
     X_train = torch.tensor(X_train, dtype=torch.float32)
@@ -106,7 +93,7 @@ def main():
         print()
         X, y = dataset.preprocess()
 
-        baseline_model, rmse = baseline_test(dataset)
+        baseline_model, rmse1, y_test1, y_pred1 = baseline_test(dataset)
         y_pred = baseline_model.predict(X)
         Z = dataset.add_Z(y_pred)
         
@@ -114,11 +101,28 @@ def main():
         res = dataset.check_correlation()
         print()
         assert res, "Correlation check failed."
-
+        # exit()
+        
         flow = train_flow(dataset, Z)
         print()
-        # X_aug, y_aug = augment_data(flow, dataset)
-        # baseline_test(dataset, aug=(X_aug, y_aug))
+        X_aug, y_aug = augment_data(flow, dataset)
+        _, rmse2, y_test2, y_pred2 = baseline_test(dataset, aug=(X_aug, y_aug))
+
+        with open('./CAUSAL/results/mse_results.csv', 'a') as f:
+            f.write(f"{dataset.name},{rmse1},{rmse2}\n")
+
+        # create a plot
+        plt.figure(figsize=(8, 6))
+        plt.scatter(y_test1, y_pred1, alpha=0.1, label='Using Original Data', color='blue')
+        plt.scatter(y_test2, y_pred2, alpha=0.1, label='Using Augmented Data', color='red')
+        plt.xlabel('Actual')
+        plt.ylabel('Predicted')
+        plt.title(f'Actual vs. Predicted on Test Sets of {dataset.name}')
+        size = dataset.plot_size()
+        plt.plot([0, size], [0, size], 'r--')
+        plt.legend()
+        plt.savefig(f'./CAUSAL/results/baseline_actual_vs_predicted_{dataset.name}.png')    
+        plt.close()
 
 if __name__ == "__main__":
     main()

@@ -19,13 +19,16 @@ class AbstractDataset(Dataset):
         # use X, y to download the csv file
         # write the code for this below
         df = pd.concat([self.X, self.y], axis=1)
-        df.to_csv(f"./CAUSAL/{self.name}.csv", index=False)
+        df.to_csv(f"./CAUSAL/datasets/{self.name}.csv", index=False)
 
     def __len__(self):
         return len(self.X)
     
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
+    
+    def plot_size(self):
+        raise NotImplementedError("Subclasses must implement plot_size() method.")
     
     def preprocess(self):
         raise NotImplementedError("Subclasses must implement preprocess() method.")
