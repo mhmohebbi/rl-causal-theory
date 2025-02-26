@@ -211,20 +211,85 @@ class AuctionVerificationDataset(AbstractDataset):
 
         return X_intervention, mapping
     
-class AppliancesEnergyDataset(AbstractDataset):
+class RealEstateDataset(AbstractDataset):
     def __init__(self):
-        dataset = fetch_ucirepo(id=374)
+        dataset = fetch_ucirepo(id=477)
         X = dataset.data.features.copy()
         y = dataset.data.targets.copy()
-        super().__init__(name="AppliancesEnergy", X=X, y=y)
+        super().__init__(name="RealEstate", X=X, y=y)
     
-    def preprocess(self):
-        self.X = self.X.drop(columns=['date'])        
+    def plot_size(self):
+        return 100
+    
+    def preprocess(self):        
+        # Scale numerical features
         scaler = StandardScaler()
         self.X_preprocessed = scaler.fit_transform(self.X.values)
         self.y_preprocessed = self.y.values
-      
         return self.X_preprocessed, self.y_preprocessed
     
-dataset = AppliancesEnergyDataset()
-dataset.download_csv()
+    def intervention(self):
+        assert self.y_preprocessed is not None and self.X_preprocessed is not None, "Preprocess the data first."
+        assert self.X_Z is not None, "Add Z to the dataset first."
+        X_preprocessed = torch.tensor(self.X_preprocessed, dtype=torch.float32)
+
+        mapping = list(range(X_preprocessed.shape[0]))
+        X_intervention = X_preprocessed.clone()
+        print("Dataset Size Pre Intervention: ", X_intervention.shape)
+        for i in range(X_intervention.shape[0]):
+            X_intervention_copy = X_intervention[i].clone()
+
+            X_intervention_copy[2] += 0.20
+            X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
+            mapping.append(i)
+
+            X_intervention_copy[2] -= 0.40
+            X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
+            mapping.append(i)
+
+        print("Dataset Size Post Intervention: ", X_intervention.shape)
+
+        return X_intervention, mapping
+
+class AirfoilDataset(AbstractDataset):
+    def __init__(self):
+        dataset = fetch_ucirepo(id=291)
+        X = dataset.data.features.copy()
+        y = dataset.data.targets.copy()
+        super().__init__(name="Airfoil Self-Noise", X=X, y=y)
+    
+    def plot_size(self):
+        return 5
+    
+    def preprocess(self):        
+        scaler = StandardScaler()
+        self.X_preprocessed = scaler.fit_transform(self.X.values)
+        self.y_preprocessed = scaler.fit_transform(self.y.values)
+        # print(self.X_preprocessed[:5])
+        
+        return self.X_preprocessed, self.y_preprocessed
+
+    def intervention(self):
+        assert self.y_preprocessed is not None and self.X_preprocessed is not None, "Preprocess the data first."
+        assert self.X_Z is not None, "Add Z to the dataset first."
+        X_preprocessed = torch.tensor(self.X_preprocessed, dtype=torch.float32)
+
+        mapping = list(range(X_preprocessed.shape[0]))
+        X_intervention = X_preprocessed.clone()
+        print("Dataset Size Pre Intervention: ", X_intervention.shape)
+        for i in range(X_intervention.shape[0]):
+            X_intervention_copy = X_intervention[i].clone()
+
+            X_intervention_copy[0] += 0.01
+            X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
+            mapping.append(i)
+
+            X_intervention_copy[0] -= 0.02
+            X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
+            mapping.append(i)
+
+        print("Dataset Size Post Intervention: ", X_intervention.shape)
+
+        return X_intervention, mapping
+    
+    

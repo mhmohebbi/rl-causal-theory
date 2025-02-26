@@ -7,7 +7,7 @@ import numpy as np
 from cnflow import *
 
 def load_datasets():
-    datasets = [AuctionVerificationDataset(), ParkinsonsTelemonitoringDataset(), WineQualityDataset(), AbaloneDataset()]
+    datasets = [AbaloneDataset()]#[AirfoilDataset(), AuctionVerificationDataset(), RealEstateDataset(), ParkinsonsTelemonitoringDataset(), WineQualityDataset(), AbaloneDataset()]
     return datasets
 
 def baseline_test(dataset: AbstractDataset, aug=None):
@@ -37,11 +37,11 @@ def train_flow(dataset: AbstractDataset, residual_noise: np.ndarray):
     t_dim = dataset.y_preprocessed.shape[1] # Dimensionality of target T
     f_dim = dataset.X_preprocessed.shape[1] # Dimensionality of features F
     cond_dim = f_dim     # Now conditioning is only on F
-    hidden_dim = 64
+    hidden_dim = 32
     num_coupling_layers = 4
     batch_size = 32
     learning_rate = 1e-3
-    num_epochs =75
+    num_epochs = 75
 
     X_train, X_test, y_train, y_test = dataset.split()
     X_train = torch.tensor(X_train, dtype=torch.float32)
@@ -87,12 +87,13 @@ def augment_data(flow: ConditionalNormalizingFlow, dataset: AbstractDataset):
 def main():
     datasets = load_datasets()
     for dataset in datasets:
+        # dataset.download_csv()
+
         print(f"Dataset: {dataset.name}")
         print(f"X shape: {dataset.X.shape}")
         print(f"y shape: {dataset.y.shape}")
         print()
         X, y = dataset.preprocess()
-
         baseline_model, rmse1, y_test1, y_pred1 = baseline_test(dataset)
         y_pred = baseline_model.predict(X)
         Z = dataset.add_Z(y_pred)

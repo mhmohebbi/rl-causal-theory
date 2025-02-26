@@ -14,6 +14,9 @@ class AbstractDataset(Dataset):
         self.X_preprocessed = None
         self.y_preprocessed = None
         self.X_Z = None
+        # optional i guess
+        print(X.head())
+        print(y.head())
     
     def download_csv(self):
         # use X, y to download the csv file
