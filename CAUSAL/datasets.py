@@ -1,8 +1,11 @@
 from data import AbstractDataset
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, MinMaxScaler
 from ucimlrepo import fetch_ucirepo
 import numpy as np
 import torch
+
+p1 = 0.05
+p2 = 0.02
 
 class WineQualityDataset(AbstractDataset):
     def __init__(self):
@@ -12,36 +15,72 @@ class WineQualityDataset(AbstractDataset):
         super().__init__(name="WineQuality", X=X, y=y)
 
     def plot_size(self):
-        return 10
+        return 1
     
     def preprocess(self):
-        self.X_preprocessed = self.X.values
-        self.y_preprocessed = self.y.values
+        # Standardize the features
+        self.scaler_X = StandardScaler()
+        self.X_preprocessed = self.scaler_X.fit_transform(self.X.values)
         
-        return  self.X_preprocessed, self.y_preprocessed
+        # Normalize the features
+        self.normalizer_X = MinMaxScaler()
+        self.X_preprocessed = self.normalizer_X.fit_transform(self.X_preprocessed)
+        
+        # Standardize the target
+        self.scaler_y = StandardScaler()
+        self.y_preprocessed = self.scaler_y.fit_transform(self.y.values)
+        
+        # Normalize the target
+        self.normalizer_y = MinMaxScaler()
+        self.y_preprocessed = self.normalizer_y.fit_transform(self.y_preprocessed)
+
+        return self.X_preprocessed, self.y_preprocessed
     
-    def intervention(self):
+    def intervention(self, X_train, feature_a):
         assert self.y_preprocessed is not None and self.X_preprocessed is not None, "Preprocess the data first."
         assert self.X_Z is not None, "Add Z to the dataset first."
-        X_preprocessed = torch.tensor(self.X_preprocessed, dtype=torch.float32)
-        
-        mapping = list(range(X_preprocessed.shape[0]))
-        X_intervention = X_preprocessed.clone()
-        print("Dataset Size Pre Intervention: ", X_intervention.shape)
-        for i in range(X_intervention.shape[0]):
-            X_intervention_copy = X_intervention[i].clone()
 
-            X_intervention_copy[1] += 0.25
+        X_train = torch.tensor(X_train, dtype=torch.float64)
+
+        # print("Dataset Size Pre Intervention: ", X_train.shape)
+        original_training_size = X_train.shape[0]
+
+        half = int(original_training_size / 2)
+        quarter = int(original_training_size / 4)
+        three_quarters = int(3 * original_training_size / 4)
+
+        X_intervention = torch.empty(0, X_train.shape[1])
+
+        for i in range(original_training_size):
+            X_intervention_copy = X_train[i].clone()
+            # original_X = self.inverse_transform_x(X_intervention_copy.reshape(1, -1)).flatten()
+
+            if i < quarter:
+                increment = X_intervention_copy[feature_a] * p1
+                X_intervention_copy[feature_a] += increment
+                # X_intervention_copy = torch.tensor(self.transform_x(original_X.reshape(1, -1)), dtype=torch.float64)
+            elif i < half:
+                increment = X_intervention_copy[feature_a] * p1
+                X_intervention_copy[feature_a] -= increment
+                # X_intervention_copy = torch.tensor(self.transform_x(original_X.reshape(1, -1)), dtype=torch.float64)
+            elif i < three_quarters:
+                increment = X_intervention_copy[feature_a] * p2
+                X_intervention_copy[feature_a] += increment
+                # X_intervention_copy = torch.tensor(self.transform_x(original_X.reshape(1, -1)), dtype=torch.float64)
+            else:
+                increment = X_intervention_copy[feature_a] * p2
+                X_intervention_copy[feature_a] -= increment
+                # X_intervention_copy = torch.tensor(self.transform_x(original_X.reshape(1, -1)), dtype=torch.float64)
+            
+            if X_intervention_copy[feature_a] < 0:
+                X_intervention_copy[feature_a] = 0
+            elif X_intervention_copy[feature_a] > 1:
+                X_intervention_copy[feature_a] = 1
+
             X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
-            mapping.append(i)
 
-            X_intervention_copy[1] -= 0.5
-            X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
-            mapping.append(i)
-
-        print("Dataset Size Post Intervention: ", X_intervention.shape)
-
-        return X_intervention, mapping
+        # print("Dataset Size Post Intervention: ", augmented_X.shape)
+        return X_intervention
 
 class AbaloneDataset(AbstractDataset):
     def __init__(self):
@@ -51,7 +90,7 @@ class AbaloneDataset(AbstractDataset):
         super().__init__(name="Abalone", X=X, y=y)
     
     def plot_size(self):
-        return 40
+        return 1
     
     def preprocess(self):
         categorical_features = ["Sex"]
@@ -74,10 +113,10 @@ class AbaloneDataset(AbstractDataset):
         
         return  self.X_preprocessed, self.y_preprocessed
     
-    def intervention(self):
+    def intervention(self, X_train):
         assert self.y_preprocessed is not None and self.X_preprocessed is not None, "Preprocess the data first."
         assert self.X_Z is not None, "Add Z to the dataset first."
-        X_preprocessed = torch.tensor(self.X_preprocessed, dtype=torch.float32)
+        X_preprocessed = torch.tensor(X_train, dtype=torch.float64)
 
         mapping = list(range(X_preprocessed.shape[0]))
         X_intervention = X_preprocessed.clone()
@@ -136,38 +175,72 @@ class ParkinsonsTelemonitoringDataset(AbstractDataset):
         super().__init__(name="ParkinsonsTelemonitoring", X=X, y=y)
     
     def plot_size(self):
-        return 60
+        return 1
     
     def preprocess(self):
         self.y = self.y.drop(columns=['motor_UPDRS'])
-        self.X_preprocessed = self.X.values
-        self.y_preprocessed = self.y.values
+
+        # Standardize the features
+        self.scaler_X = StandardScaler()
+        self.X_preprocessed = self.scaler_X.fit_transform(self.X.values)
         
-        return  self.X_preprocessed, self.y_preprocessed
+        # Normalize the features
+        self.normalizer_X = MinMaxScaler()
+        self.X_preprocessed = self.normalizer_X.fit_transform(self.X_preprocessed)
+        
+        # Standardize the target
+        self.scaler_y = StandardScaler()
+        self.y_preprocessed = self.scaler_y.fit_transform(self.y.values)
+        
+        # Normalize the target
+        self.normalizer_y = MinMaxScaler()
+        self.y_preprocessed = self.normalizer_y.fit_transform(self.y_preprocessed)
+
+        return self.X_preprocessed, self.y_preprocessed
     
-    def intervention(self):
+    def intervention(self, X_train, feature_a):
         assert self.y_preprocessed is not None and self.X_preprocessed is not None, "Preprocess the data first."
         assert self.X_Z is not None, "Add Z to the dataset first."
-        X_preprocessed = torch.tensor(self.X_preprocessed, dtype=torch.float32)
+
+        X_train = torch.tensor(X_train, dtype=torch.float64)
         
-        mapping = list(range(X_preprocessed.shape[0]))
-        X_intervention = X_preprocessed.clone()
-        print("Dataset Size Pre Intervention: ", X_intervention.shape)
-        for i in range(X_intervention.shape[0]):
-            X_intervention_copy = X_intervention[i].clone()
+        original_training_size = X_train.shape[0]
 
-            X_intervention_copy[12] += 0.01
+        # print("Dataset Size Pre Intervention: ", X_intervention.shape)
+
+        half = int(original_training_size / 2)
+        quarter = int(original_training_size / 4)
+        three_quarters = int(3 * original_training_size / 4)
+        X_intervention = torch.empty(0, X_train.shape[1])
+
+        for i in range(original_training_size):
+            X_intervention_copy = X_train[i].clone()
+
+            if i < quarter:
+                increment = X_intervention_copy[feature_a] * p1
+                X_intervention_copy[feature_a] += increment
+            elif i < half:
+                increment = X_intervention_copy[feature_a] * p1
+                X_intervention_copy[feature_a] -= increment
+            elif i < three_quarters:
+                increment = X_intervention_copy[feature_a] * p2
+                X_intervention_copy[feature_a] += increment
+            else:
+                increment = X_intervention_copy[feature_a] * p2
+                X_intervention_copy[feature_a] -= increment
+            
+            if X_intervention_copy[feature_a] < 0:
+                X_intervention_copy[feature_a] = 0
+            elif X_intervention_copy[feature_a] > 1:
+                X_intervention_copy[feature_a] = 1
+
             X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
-            mapping.append(i)
 
-            X_intervention_copy[12] -= 0.02
-            X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
-            mapping.append(i)
 
-        print("Dataset Size Post Intervention: ", X_intervention.shape)
+        # print("Dataset Size Post Intervention: ", X_intervention.shape)
 
-        return X_intervention, mapping
-    
+        return X_intervention
+        
 class AuctionVerificationDataset(AbstractDataset):
     def __init__(self):
         dataset = fetch_ucirepo(id=713)
@@ -176,40 +249,69 @@ class AuctionVerificationDataset(AbstractDataset):
         super().__init__(name="AuctionVerification", X=X, y=y)
     
     def plot_size(self):
-        return 50000
+        return 1
     
     def preprocess(self):
         self.y = self.y.drop(columns=['verification.result'])
-        # scale the features
-        scaler = StandardScaler()
-        self.X_preprocessed = scaler.fit_transform(self.X.values)
-        # scale the target column
-        # self.y_preprocessed = scaler.fit_transform(self.y.values)
-        self.y_preprocessed = self.y.values
-        return  self.X_preprocessed, self.y_preprocessed
+
+        # Standardize the features
+        self.scaler_X = StandardScaler()
+        self.X_preprocessed = self.scaler_X.fit_transform(self.X.values)
+        
+        # Normalize the features
+        self.normalizer_X = MinMaxScaler()
+        self.X_preprocessed = self.normalizer_X.fit_transform(self.X_preprocessed)
+        
+        # Standardize the target
+        self.scaler_y = StandardScaler()
+        self.y_preprocessed = self.scaler_y.fit_transform(self.y.values)
+        
+        # Normalize the target
+        self.normalizer_y = MinMaxScaler()
+        self.y_preprocessed = self.normalizer_y.fit_transform(self.y_preprocessed)
+
+        return self.X_preprocessed, self.y_preprocessed
     
-    def intervention(self):
+    def intervention(self, X_train, feature_a):
         assert self.y_preprocessed is not None and self.X_preprocessed is not None, "Preprocess the data first."
         assert self.X_Z is not None, "Add Z to the dataset first."
-        X_preprocessed = torch.tensor(self.X_preprocessed, dtype=torch.float32)
+        X_train = torch.tensor(X_train, dtype=torch.float64)
 
-        mapping = list(range(X_preprocessed.shape[0]))
-        X_intervention = X_preprocessed.clone()
-        print("Dataset Size Pre Intervention: ", X_intervention.shape)
-        for i in range(X_intervention.shape[0]):
-            X_intervention_copy = X_intervention[i].clone()
+        original_training_size = X_train.shape[0]
 
-            X_intervention_copy[0] += 0.20
+        half = int(original_training_size / 2)
+        quarter = int(original_training_size / 4)
+        three_quarters = int(3 * original_training_size / 4)
+        X_intervention = torch.empty(0, X_train.shape[1])
+        # print("Dataset Size Pre Intervention: ", X_intervention.shape)
+
+        for i in range(original_training_size):
+            X_intervention_copy = X_train[i].clone()
+
+            if i < quarter:
+                increment = X_intervention_copy[feature_a] * p1
+                X_intervention_copy[feature_a] += increment
+            elif i < half:
+                increment = X_intervention_copy[feature_a] * p1
+                X_intervention_copy[feature_a] -= increment
+            elif i < three_quarters:
+                increment = X_intervention_copy[feature_a] * p2
+                X_intervention_copy[feature_a] += increment
+            else:
+                increment = X_intervention_copy[feature_a] * p2
+                X_intervention_copy[feature_a] -= increment
+            
+            if X_intervention_copy[feature_a] < 0:
+                X_intervention_copy[feature_a] = 0
+            elif X_intervention_copy[feature_a] > 1:
+                X_intervention_copy[feature_a] = 1
+
             X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
-            mapping.append(i)
 
-            X_intervention_copy[0] -= 0.40
-            X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
-            mapping.append(i)
 
-        print("Dataset Size Post Intervention: ", X_intervention.shape)
+        # print("Dataset Size Post Intervention: ", X_intervention.shape)
 
-        return X_intervention, mapping
+        return X_intervention
     
 class RealEstateDataset(AbstractDataset):
     def __init__(self):
@@ -219,37 +321,67 @@ class RealEstateDataset(AbstractDataset):
         super().__init__(name="RealEstate", X=X, y=y)
     
     def plot_size(self):
-        return 100
+        return 1
     
     def preprocess(self):        
-        # Scale numerical features
-        scaler = StandardScaler()
-        self.X_preprocessed = scaler.fit_transform(self.X.values)
-        self.y_preprocessed = self.y.values
+        # Standardize the features
+        self.scaler_X = StandardScaler()
+        self.X_preprocessed = self.scaler_X.fit_transform(self.X.values)
+        
+        # Normalize the features
+        self.normalizer_X = MinMaxScaler()
+        self.X_preprocessed = self.normalizer_X.fit_transform(self.X_preprocessed)
+        
+        # Standardize the target
+        self.scaler_y = StandardScaler()
+        self.y_preprocessed = self.scaler_y.fit_transform(self.y.values)
+        
+        # Normalize the target
+        self.normalizer_y = MinMaxScaler()
+        self.y_preprocessed = self.normalizer_y.fit_transform(self.y_preprocessed)
+
         return self.X_preprocessed, self.y_preprocessed
     
-    def intervention(self):
+    def intervention(self, X_train, feature_a):
         assert self.y_preprocessed is not None and self.X_preprocessed is not None, "Preprocess the data first."
         assert self.X_Z is not None, "Add Z to the dataset first."
-        X_preprocessed = torch.tensor(self.X_preprocessed, dtype=torch.float32)
 
-        mapping = list(range(X_preprocessed.shape[0]))
-        X_intervention = X_preprocessed.clone()
-        print("Dataset Size Pre Intervention: ", X_intervention.shape)
-        for i in range(X_intervention.shape[0]):
-            X_intervention_copy = X_intervention[i].clone()
+        X_train = torch.tensor(X_train, dtype=torch.float64)
 
-            X_intervention_copy[2] += 0.20
+        original_training_size = X_train.shape[0]
+
+        half = int(original_training_size / 2)
+        quarter = int(original_training_size / 4)
+        three_quarters = int(3 * original_training_size / 4)
+        X_intervention = torch.empty(0, X_train.shape[1])
+        # print("Dataset Size Pre Intervention: ", X_intervention.shape)
+
+        for i in range(original_training_size):
+            X_intervention_copy = X_train[i].clone()
+
+            if i < quarter:
+                increment = X_intervention_copy[feature_a] * p1
+                X_intervention_copy[feature_a] += increment
+            elif i < half:
+                increment = X_intervention_copy[feature_a] * p1
+                X_intervention_copy[feature_a] -= increment
+            elif i < three_quarters:
+                increment = X_intervention_copy[feature_a] * p2
+                X_intervention_copy[feature_a] += increment
+            else:
+                increment = X_intervention_copy[feature_a] * p2
+                X_intervention_copy[feature_a] -= increment
+            
+            if X_intervention_copy[feature_a] < 0:
+                X_intervention_copy[feature_a] = 0
+            elif X_intervention_copy[feature_a] > 1:
+                X_intervention_copy[feature_a] = 1
+
             X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
-            mapping.append(i)
 
-            X_intervention_copy[2] -= 0.40
-            X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
-            mapping.append(i)
+        # print("Dataset Size Post Intervention: ", X_intervention.shape)
 
-        print("Dataset Size Post Intervention: ", X_intervention.shape)
-
-        return X_intervention, mapping
+        return X_intervention
 
 class AirfoilDataset(AbstractDataset):
     def __init__(self):
@@ -259,37 +391,77 @@ class AirfoilDataset(AbstractDataset):
         super().__init__(name="Airfoil Self-Noise", X=X, y=y)
     
     def plot_size(self):
-        return 5
+        return 1
     
     def preprocess(self):        
-        scaler = StandardScaler()
-        self.X_preprocessed = scaler.fit_transform(self.X.values)
-        self.y_preprocessed = scaler.fit_transform(self.y.values)
-        # print(self.X_preprocessed[:5])
+        # Standardize the features
+        self.scaler_X = StandardScaler()
+        self.X_preprocessed = self.scaler_X.fit_transform(self.X.values)
         
+        # Normalize the features
+        self.normalizer_X = MinMaxScaler()
+        self.X_preprocessed = self.normalizer_X.fit_transform(self.X_preprocessed)
+        
+        # Standardize the target
+        self.scaler_y = StandardScaler()
+        self.y_preprocessed = self.scaler_y.fit_transform(self.y.values)
+        
+        # Normalize the target
+        self.normalizer_y = MinMaxScaler()
+        self.y_preprocessed = self.normalizer_y.fit_transform(self.y_preprocessed)
+
         return self.X_preprocessed, self.y_preprocessed
 
-    def intervention(self):
+    def intervention(self, X_train, feature_a):
         assert self.y_preprocessed is not None and self.X_preprocessed is not None, "Preprocess the data first."
         assert self.X_Z is not None, "Add Z to the dataset first."
-        X_preprocessed = torch.tensor(self.X_preprocessed, dtype=torch.float32)
+        X_train = torch.tensor(X_train, dtype=torch.float64)
 
-        mapping = list(range(X_preprocessed.shape[0]))
-        X_intervention = X_preprocessed.clone()
-        print("Dataset Size Pre Intervention: ", X_intervention.shape)
-        for i in range(X_intervention.shape[0]):
-            X_intervention_copy = X_intervention[i].clone()
+        original_training_size = X_train.shape[0]
 
-            X_intervention_copy[0] += 0.01
+        # print("Dataset Size Pre Intervention: ", X_intervention.shape)
+
+        half = int(original_training_size / 2)
+        quarter = int(original_training_size / 4)
+        three_quarters = int(3 * original_training_size / 4)
+        X_intervention = torch.empty(0, X_train.shape[1])
+        
+        for i in range(original_training_size):
+            X_intervention_copy = X_train[i].clone()
+
+            if i < quarter:
+                increment = X_intervention_copy[feature_a] * p1
+                X_intervention_copy[feature_a] += increment
+            elif i < half:
+                increment = X_intervention_copy[feature_a] * p1
+                X_intervention_copy[feature_a] -= increment
+            elif i < three_quarters:
+                increment = X_intervention_copy[feature_a] * p2
+                X_intervention_copy[feature_a] += increment
+            else:
+                increment = X_intervention_copy[feature_a] * p2
+                X_intervention_copy[feature_a] -= increment
+            
+            if X_intervention_copy[feature_a] < 0:
+                X_intervention_copy[feature_a] = 0
+            elif X_intervention_copy[feature_a] > 1:
+                X_intervention_copy[feature_a] = 1
+
             X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
-            mapping.append(i)
 
-            X_intervention_copy[0] -= 0.02
-            X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
-            mapping.append(i)
+            # X_intervention_copy[0] += 0.01
+            # X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
+            # # randomly select j in range of 0 to original_training_size
+            # j = np.random.randint(0, original_training_size)
+            # mapping.append(i)
 
-        print("Dataset Size Post Intervention: ", X_intervention.shape)
+            # X_intervention_copy[0] -= 0.02
+            # X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
+            # j = np.random.randint(0, original_training_size)
+            # mapping.append(i)
 
-        return X_intervention, mapping
+        # print("Dataset Size Post Intervention: ", X_intervention.shape)
+
+        return X_intervention
     
     
