@@ -1,19 +1,25 @@
 from scipy.stats import pearsonr, spearmanr
-import torch
+import os
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 from sklearn.model_selection import train_test_split
 import seaborn as sns
+from causal import CausalGraphLearner
 import matplotlib.pyplot as plt
 
 class AbstractDataset(Dataset):
     def __init__(self, name, X: pd.DataFrame, y: pd.DataFrame):
-        self.df = pd.concat([X, y], axis=1)
+        # Concatenate X and y, then drop any rows with missing values and reset the index
+        self.df = pd.concat([X, y], axis=1).dropna().reset_index(drop=True)
+        self.df = self.df.drop_duplicates()
+        # Update X and y to reflect the cleaned dataframe
+        self.X = self.df[X.columns]
+        self.y = self.df[y.columns]
+
         self.name = name
-        self.X = X
-        self.y = y
+
         self.X_preprocessed = None
         self.y_preprocessed = None
         self.X_Z = None
@@ -62,7 +68,7 @@ class AbstractDataset(Dataset):
         return self.X[idx], self.y[idx]
     
     def plot_size(self):
-        raise NotImplementedError("Subclasses must implement plot_size() method.")
+        return 1
     
     def preprocess(self):
         raise NotImplementedError("Subclasses must implement preprocess() method.")
@@ -73,7 +79,7 @@ class AbstractDataset(Dataset):
             X = self.X_preprocessed
             y = self.y_preprocessed
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
         return X_train, X_test, y_train, y_test
     
     def add_Z(self, y_pred, y_prime=None):
@@ -90,9 +96,44 @@ class AbstractDataset(Dataset):
     def intervention(self):
         raise NotImplementedError("Subclasses must implement intervention() method.")
     
-    def check_correlation(self, significance_threshold=0.1):
+    def check_casual_graph(self, baseline_model_name):
         assert self.y_preprocessed is not None and self.X_preprocessed is not None, "Preprocess the data first."
         assert self.X_Z is not None, "Add Z to the dataset first."
+
+        X = self.X_Z
+        y = self.y_preprocessed
+
+        # target_name = self.df.columns[-1]
+        # feature_names = self.df.columns[:-1]
+        # new_col_names = feature_names.tolist() + ['Z']
+        # df = pd.DataFrame(X, columns=new_col_names)
+        # df[target_name] = y
+
+        df = pd.DataFrame(X, columns=[f"F{i}" for i in range(X.shape[1]-1)] + ["Z"])
+        df["T"] = y
+        learner = CausalGraphLearner(alpha=0.05)
+        learner.fit(df)
+
+        graph = learner.get_graph()
+        # print()
+        # print(graph)
+        # print()
+        graph_viz = learner.plot_graph()
+        graph_viz.render(f'./CAUSAL/causal_graphs/{baseline_model_name}/{self.name}', format='png', cleanup=True)
+
+        connected_to_z = learner.get_adjacent_nodes('Z')
+        print("Nodes connected to Z:", connected_to_z)
+        not_connected_to_z = learner.get_non_adjacent_nodes('Z')
+        print("Nodes NOT connected to Z:", not_connected_to_z)
+
+        print()
+        return not_connected_to_z
+
+    def check_correlation(self, baseline_model_name, significance_threshold=0.001):
+        assert self.y_preprocessed is not None and self.X_preprocessed is not None, "Preprocess the data first."
+        assert self.X_Z is not None, "Add Z to the dataset first."
+
+        not_connected_to_z = self.check_casual_graph(baseline_model_name)
 
         X = self.X_Z
         y = self.y_preprocessed
@@ -103,19 +144,21 @@ class AbstractDataset(Dataset):
         feature_names = [col for col in df.columns if col not in ['T', 'Z']]
 
         df_copy = df.copy()
-        independent_features = self.find_independent_features(df_copy)
-        print("Independent features:", independent_features)
-        print()
+        independent_features = self.find_independent_features(df_copy, baseline_model_name)
+        # print("Independent features:", independent_features)
+        # print()
 
         all_checks_passed = True
         reasons = []
-        
+
+        abs_spearman_corrs = {}
         # Check correlations between Z and each feature
         for feature in feature_names:
             pearson_corr, pearson_p = pearsonr(df['Z'], df[feature])
             spearman_corr, spearman_p = spearmanr(df['Z'], df[feature])
             print(f"Feature: {feature}, Pearson: {pearson_corr:.3f} (p={pearson_p:.3f}), Spearman: {spearman_corr:.3f} (p={spearman_p:.3f})")
             
+            abs_spearman_corrs[feature] = abs(spearman_corr)
             # If either test suggests significance, flag it
             if pearson_p < significance_threshold or spearman_p < significance_threshold:
                 all_checks_passed = False
@@ -134,26 +177,36 @@ class AbstractDataset(Dataset):
         if z_p_value > significance_threshold:
             all_checks_passed = False
             reasons.append(f"Z is not significantly correlated with target T (p-value: {z_p_value:.3f}).")
-        
-        # Print overall result
-        if all_checks_passed:
-            print("All checks passed: Z is not correlated with any feature and is correlated with T.")
-        else:
-            print("Check failed:", " ".join(reasons))
+
 
         model.params = model.params.drop("const")
         model.params = model.params.drop("Z")
-        sorted_params = model.params.sort_values(ascending=False)
 
-        feature_to_use = None
-        for feature in sorted_params.index:
-            if feature not in independent_features:
-                feature_to_use = feature
-                break
-        if feature_to_use is None:
-            feature_to_use = sorted_params.index[0]
-            
+        abs_params = model.params.abs()
+        candidate_features = set(not_connected_to_z).intersection(abs_params.index)
+        if not candidate_features:
+            print("Check failed: no suitable features found that meet all criteria. (all connected to Z)")
+            all_checks_passed = False
+            return all_checks_passed, None
+        
+        # Calculate a combined score for each feature
+        # Higher score = better feature (higher model coefficient and lower correlation with Z)
+        feature_scores = {}
+        for feature in candidate_features:
+            model_coef = abs_params[feature]
+            z_corr = abs_spearman_corrs[feature]
+            # Weight model coefficient positively and Z correlation negatively
+            # Normalize the values if needed for more balanced weighting
+            feature_scores[feature] = model_coef - z_corr
+
+        # Select feature with highest combined score
+        feature_to_use = max(feature_scores.items(), key=lambda x: x[1])[0]
+        print()
         print(f"Feature to use: {feature_to_use}")
+        print(f"Selected feature model coefficient: {abs_params[feature_to_use]:.4f}")
+        print(f"Selected feature correlation with Z: {abs_spearman_corrs[feature_to_use]:.4f}")
+        
+
         feature_to_use_index = int(feature_to_use[1:])
         return all_checks_passed, feature_to_use_index
     
@@ -179,7 +232,7 @@ class AbstractDataset(Dataset):
         # print(model.summary())
 
 
-    def find_independent_features(self, df, corr_threshold=0.5):
+    def find_independent_features(self, df, baseline_model_name, corr_threshold=0.5):
         # Compute the absolute correlation matrix
         corr_matrix = df.corr().abs()
 
@@ -187,7 +240,8 @@ class AbstractDataset(Dataset):
         plt.figure(figsize=(10, 8))
         sns.heatmap(corr_matrix, annot=True, cmap='coolwarm')
         plt.title(f"Correlation matrix for {self.name}")
-        plt.savefig(f'./CAUSAL/correlations/correlation_matrix_{self.name}.png')
+        os.makedirs(f'./CAUSAL/correlations/{baseline_model_name}', exist_ok=True)
+        plt.savefig(f'./CAUSAL/correlations/{baseline_model_name}/correlation_matrix_{self.name}.png')
 
         # Greedy selection: iterate over features and keep those that are not highly correlated
         selected_features = []

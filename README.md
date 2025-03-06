@@ -42,3 +42,28 @@ RealEstate,5.906507889173116,7.024490979459861
 ParkinsonsTelemonitoring,2.0282809897771865,9.334662481766179
 WineQuality,0.6284387966741305,0.7455203911437097
 Abalone,2.2723418091290455,2.2607344598609744
+
+
+g(x) = y'
+x->y
+
+z = y - y'
+
+y' = y - z
+
+
+z + g(x) = y
+
+y - g(x) = z
+____
+
+z + g(x) = y
+
+g(x) = y~
+
+z = y - g(x)
+
+for one data point x , y
+get z with z = y - g(x)
+keep z fized alter x to x'
+now z + g(x') = y' where y' is the counterfactual
