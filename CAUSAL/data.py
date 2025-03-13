@@ -1,5 +1,7 @@
 from scipy.stats import pearsonr, spearmanr
 import os
+import torch
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 import numpy as np
@@ -9,6 +11,8 @@ import seaborn as sns
 from causal import CausalGraphLearner
 import matplotlib.pyplot as plt
 
+p1 = 0.05
+p2 = 0.1
 class AbstractDataset(Dataset):
     def __init__(self, name, X: pd.DataFrame, y: pd.DataFrame):
         # Concatenate X and y, then drop any rows with missing values and reset the index
@@ -70,8 +74,24 @@ class AbstractDataset(Dataset):
     def plot_size(self):
         return 1
     
-    def preprocess(self):
-        raise NotImplementedError("Subclasses must implement preprocess() method.")
+    def preprocess(self):        
+        # Standardize the features
+        self.scaler_X = StandardScaler()
+        self.X_preprocessed = self.scaler_X.fit_transform(self.X.values)
+        
+        # Normalize the features
+        self.normalizer_X = MinMaxScaler()
+        self.X_preprocessed = self.normalizer_X.fit_transform(self.X_preprocessed)
+        
+        # Standardize the target
+        self.scaler_y = StandardScaler()
+        self.y_preprocessed = self.scaler_y.fit_transform(self.y.values)
+        
+        # Normalize the target
+        self.normalizer_y = MinMaxScaler()
+        self.y_preprocessed = self.normalizer_y.fit_transform(self.y_preprocessed)
+
+        return self.X_preprocessed, self.y_preprocessed
     
     def split(self, test_size=0.2, X=None, y=None):
         assert self.y_preprocessed is not None and self.X_preprocessed is not None, "Preprocess the data first."
@@ -93,9 +113,44 @@ class AbstractDataset(Dataset):
 
         return Z
     
-    def intervention(self):
-        raise NotImplementedError("Subclasses must implement intervention() method.")
-    
+    def intervention(self, X_train, feature_a):
+        assert self.y_preprocessed is not None and self.X_preprocessed is not None, "Preprocess the data first."
+        assert self.X_Z is not None, "Add Z to the dataset first."
+
+        X_train = torch.tensor(X_train, dtype=torch.float64)
+
+        original_training_size = X_train.shape[0]
+
+        half = int(original_training_size / 2)
+        quarter = int(original_training_size / 4)
+        three_quarters = int(3 * original_training_size / 4)
+        X_intervention = torch.empty(0, X_train.shape[1])
+
+        for i in range(original_training_size):
+            X_intervention_copy = X_train[i].clone()
+
+            if i < quarter:
+                increment = X_intervention_copy[feature_a] * p1
+                X_intervention_copy[feature_a] += increment
+            elif i < half:
+                increment = X_intervention_copy[feature_a] * p1
+                X_intervention_copy[feature_a] -= increment
+            elif i < three_quarters:
+                increment = X_intervention_copy[feature_a] * p2
+                X_intervention_copy[feature_a] += increment
+            else:
+                increment = X_intervention_copy[feature_a] * p2
+                X_intervention_copy[feature_a] -= increment
+            
+            if X_intervention_copy[feature_a] < 0:
+                X_intervention_copy[feature_a] = 0
+            elif X_intervention_copy[feature_a] > 1:
+                X_intervention_copy[feature_a] = 1
+
+            X_intervention = torch.cat((X_intervention, X_intervention_copy.unsqueeze(0)), dim=0)
+
+        return X_intervention
+
     def check_casual_graph(self, baseline_model_name):
         assert self.y_preprocessed is not None and self.X_preprocessed is not None, "Preprocess the data first."
         assert self.X_Z is not None, "Add Z to the dataset first."
@@ -119,7 +174,7 @@ class AbstractDataset(Dataset):
         # print(graph)
         # print()
         graph_viz = learner.plot_graph()
-        graph_viz.render(f'./CAUSAL/causal_graphs/{baseline_model_name}/{self.name}', format='png', cleanup=True)
+        graph_viz.render(f'./CAUSAL/causal_graphs/{baseline_model_name}/sample_sizes/{self.name}', format='png', cleanup=True)
 
         connected_to_z = learner.get_adjacent_nodes('Z')
         print("Nodes connected to Z:", connected_to_z)
@@ -240,8 +295,8 @@ class AbstractDataset(Dataset):
         plt.figure(figsize=(10, 8))
         sns.heatmap(corr_matrix, annot=True, cmap='coolwarm')
         plt.title(f"Correlation matrix for {self.name}")
-        os.makedirs(f'./CAUSAL/correlations/{baseline_model_name}', exist_ok=True)
-        plt.savefig(f'./CAUSAL/correlations/{baseline_model_name}/correlation_matrix_{self.name}.png')
+        os.makedirs(f'./CAUSAL/correlations/{baseline_model_name}/sample_sizes', exist_ok=True)
+        plt.savefig(f'./CAUSAL/correlations/{baseline_model_name}/sample_sizes/correlation_matrix_{self.name}.png')
 
         # Greedy selection: iterate over features and keep those that are not highly correlated
         selected_features = []
