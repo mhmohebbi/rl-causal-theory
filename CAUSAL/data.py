@@ -11,8 +11,8 @@ import seaborn as sns
 from causal import CausalGraphLearner
 import matplotlib.pyplot as plt
 
-p1 = 0.05
-p2 = 0.1
+p1 = 0.5
+p2 = 0.2
 class AbstractDataset(Dataset):
     def __init__(self, name, X: pd.DataFrame, y: pd.DataFrame):
         # Concatenate X and y, then drop any rows with missing values and reset the index
@@ -91,6 +91,7 @@ class AbstractDataset(Dataset):
         self.normalizer_y = MinMaxScaler()
         self.y_preprocessed = self.normalizer_y.fit_transform(self.y_preprocessed)
 
+        self.X_preprocessed, self.y_preprocessed = self.X.values, self.y.values # take out later
         return self.X_preprocessed, self.y_preprocessed
     
     def split(self, test_size=0.2, X=None, y=None):
@@ -109,7 +110,8 @@ class AbstractDataset(Dataset):
             Z = y_prime.ravel() - y_pred
             self.X_Z = np.hstack((self.X_preprocessed, Z.reshape(-1, 1)))
         else:
-            Z = y_prime.ravel() - y_pred
+            assert y_prime.shape == y_pred.shape, "y_prime and y_pred must have the same shape."
+            Z = y_prime - y_pred
 
         return Z
     
@@ -264,28 +266,6 @@ class AbstractDataset(Dataset):
 
         feature_to_use_index = int(feature_to_use[1:])
         return all_checks_passed, feature_to_use_index
-    
-        # df = pd.DataFrame(X, columns=[f"F{i}" for i in range(X.shape[1]-1)] + ["Z"])
-        # df["T"] = y
-        # feature_names = [col for col in df.columns if col not in ['T', 'Z']]
-        # correlation_results = {}
-        # for feature in feature_names:
-        #     pearson_corr, pearson_p = pearsonr(df['Z'], df[feature])
-        #     spearman_corr, spearman_p = spearmanr(df['Z'], df[feature])
-        #     correlation_results[feature] = {
-        #         'pearson_corr': pearson_corr,
-        #         'pearson_p': pearson_p,
-        #         'spearman_corr': spearman_corr,
-        #         'spearman_p': spearman_p
-        #     }
-        #     print(f"Feature: {feature}, Pearson: {pearson_corr:.3f} (p={pearson_p:.3f}), Spearman: {spearman_corr:.3f} (p={spearman_p:.3f})")
-
-        # # Augmented Regression for the target T:
-        # X_aug = df[feature_names + ['Z']]
-        # X_aug = sm.add_constant(X_aug)
-        # model = sm.OLS(df['T'], X_aug).fit()
-        # print(model.summary())
-
 
     def find_independent_features(self, df, baseline_model_name, corr_threshold=0.5):
         # Compute the absolute correlation matrix

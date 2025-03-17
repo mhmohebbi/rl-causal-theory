@@ -16,7 +16,7 @@ def seeding(seed=42):
     torch.backends.cudnn.benchmark = False
 
 def load_datasets():
-    datasets = [AirfoilDataset(), AuctionVerificationDataset(), RealEstateDataset(), ParkinsonsTelemonitoringDataset(), WineQualityDataset()] # AbaloneDataset()
+    datasets = [AuctionVerificationDataset()] # [AirfoilDataset(), AuctionVerificationDataset(), RealEstateDataset(), ParkinsonsTelemonitoringDataset(), WineQualityDataset()] # AbaloneDataset()
     return datasets
 
 def baseline_test(X_train, X_test, y_train, y_test):#(dataset: AbstractDataset, aug=None):
