@@ -12,7 +12,7 @@ from causal import CausalGraphLearner
 import matplotlib.pyplot as plt
 
 p1 = 0.5
-p2 = 0.2
+p2 = 0.25
 class AbstractDataset(Dataset):
     def __init__(self, name, X: pd.DataFrame, y: pd.DataFrame):
         # Concatenate X and y, then drop any rows with missing values and reset the index

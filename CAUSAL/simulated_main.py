@@ -19,8 +19,9 @@ def seeding(seed=42):
 
 ground_truth_Z = None
 
-def linear_function(x):
-    return 2 * x + 1.5
+def linear_function(x1, x2):
+    x = x1 + x2
+    return 1.5 * x
 
 def add_noise(y, z):
     return y + z
@@ -32,16 +33,29 @@ def load_datasets():
     datasets = []
 
     for sample_size in sizes:
-        X = np.random.rand(sample_size, 1)
-        Z = np.random.beta(5, 5, size=(sample_size, 1))
+        X1 = np.random.rand(sample_size, 1)
+        X2 = np.random.rand(sample_size, 1)
 
+        Z = np.random.beta(5, 5, size=(sample_size, 1))
         # ground_truth_Z = Z
 
-        y = linear_function(X)
+        # make X2 dependent on Z
+        X2 = X2 * Z
+
+        # make X1 dependent on Z
+        X1 = X1 * Z
+
+        # make X1 dependent on X2
+        # X1 = X1 * X2
+
+        X = np.hstack((X1, X2))
+
+        y = linear_function(X1, X2)
         y = add_noise(y, Z)
     # y = np.clip(y, 0, 1)  # Simple clipping
+        # X = pd.DataFrame(X1, columns=['X'])
 
-        X = pd.DataFrame(X, columns=['X'])
+        X = pd.DataFrame(X, columns=['X1', "X2"])
         y = pd.DataFrame(y, columns=['y'])
         dataset = AbstractDataset(name=f"Linear-{sample_size}", X=X, y=y)
         datasets.append(dataset)
@@ -51,8 +65,8 @@ def load_datasets():
 
 def load_baselines():
     mlp = MLPRegressor(
-        hidden_layer_sizes=(16, 8),
-        activation='relu',
+        hidden_layer_sizes=(16),
+        activation='identity',
         solver='adam',
         max_iter=500,
         batch_size=32,
@@ -60,7 +74,7 @@ def load_baselines():
         learning_rate_init=0.001,
         tol=1e-4,
         n_iter_no_change=50,
-        alpha=1e-4, 
+        alpha=1e-2, 
         early_stopping=True,
         validation_fraction=0.1,
         verbose=True,
@@ -73,19 +87,6 @@ def load_baselines():
         eval_metric='rmse',
         verbosity=1,   
     )
-
-    class LinearModel:
-        def __init__(self):
-            pass
-
-        def fit(self, X, y):
-            print("Nothing to train")
-            pass
-
-        def predict(self, X):
-            return linear_function(X)
-        
-    # return [LinearModel()]
 
     return [xgb_model, mlp]
 
@@ -117,15 +118,15 @@ def baseline_finetune(base_model, X_train_new, X_test, y_train_new, y_test):
 def augment_data(baseline_model, dataset: AbstractDataset, X_train, Z_train, feature_a):
     X_intervention = dataset.intervention(X_train, feature_a)
 
-    Z = torch.tensor(Z_train, dtype=torch.float64).unsqueeze(1)
+    Z = torch.tensor(Z_train, dtype=torch.float64)#.unsqueeze(1)
 
-    y_pred = linear_function(X_intervention)
+    y_pred = baseline_model.predict(X_intervention)
     y_pred = torch.tensor(y_pred, dtype=torch.float64).unsqueeze(1)
 
     print(Z.shape, y_pred.shape)
     assert y_pred.shape == Z.shape, "Shapes of y_pred and Z do not match."
 
-    y_counterfactual = add_noise(y_pred, Z).squeeze(-1)
+    y_counterfactual = add_noise(y_pred, Z)#.squeeze(-1)
 
     X_intervention = X_intervention.detach().numpy()
     y_counterfactual = y_counterfactual.detach().numpy()
@@ -158,7 +159,7 @@ def main():
 
             baseline_model, rmse1, y_test1, y_pred1 = baseline_test(baseline_model, X_train, X_test, y_train, y_test)
 
-            y_pred = linear_function(X)
+            y_pred = baseline_model.predict(X)
             y_pred = y_pred.reshape(1, -1)
             Z = dataset.add_Z(y_pred)
             Z = Z.reshape(-1, 1)
@@ -166,12 +167,15 @@ def main():
             # assert np.allclose(Z, ground_truth_Z), "Z is not the same as ground_truth_Z"
 
             print()
-            #res, feature_a = dataset.check_correlation(baseline_model_name)
+            try:
+                res, feature_a = dataset.check_correlation(baseline_model_name)
+            except:
+                pass
             print()
             # assert res, "Correlation check failed."
             # assert feature_a is not None, "Feature to change is None."
             feature_a = 0
-            y_pred_train = linear_function(X_train)
+            y_pred_train = baseline_model.predict(X_train)
             y_pred_train = y_pred_train.reshape(-1, 1) # remove later
             Z_train = dataset.add_Z(y_pred_train, y_train) 
 
