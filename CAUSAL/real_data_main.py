@@ -1,4 +1,4 @@
-from datasets import get_large
+from datasets import DATASETS
 from data import AbstractDataset
 from sklearn.metrics import mean_squared_error, r2_score
 from xgboost import XGBRegressor
@@ -6,11 +6,11 @@ from sklearn.neural_network import MLPRegressor
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from cnflow import *
+import torch
 import random
 import os
 
-def seeding(seed=42):
+def seeding(seed=72):
     # Seed all random number generators for reproducibility.
     random.seed(seed)
     np.random.seed(seed)
@@ -19,16 +19,27 @@ def seeding(seed=42):
     torch.backends.cudnn.benchmark = False
 
 def load_datasets():
-    X, y = get_large()
-    datasets = []
+    # X, y = get_large()
+    # datasets = []
 
-    for i in range(500, 10500, 500):
-        X_i = X[:i]
-        y_i = y[:i]
-        datasets.append(AbstractDataset(name=f"{i}", X=X_i, y=y_i))
-    return datasets
+    # for i in range(500, 10500, 500):
+    #     X_i = X[:i]
+    #     y_i = y[:i]
+    #     datasets.append(AbstractDataset(name=f"{i}", X=X_i, y=y_i))
+    # return datasets
     #datasets = [WindDataset(), PollenDataset(), DailyDemandForecastingOrdersDataset(), ConcreteCompressiveStrengthDataset(), AirfoilDataset(), AuctionVerificationDataset(), RealEstateDataset(), ParkinsonsTelemonitoringDataset(), FriDataset(), WineQualityDataset()] # AbaloneDataset() 
-    #return DATASETS
+    
+    # Limit each dataset to 1000 samples and preprocess
+    for dataset in DATASETS:
+        # Limit to 1000 samples
+        if len(dataset.X) > 2000:
+            dataset.X = dataset.X.iloc[:2000]
+            dataset.y = dataset.y.iloc[:2000]
+        
+        # Preprocess the dataset
+        dataset.preprocess()
+    
+    return DATASETS
 
 def load_baselines():
     mlp = MLPRegressor(
@@ -87,12 +98,20 @@ def augment_data(baseline_model, dataset: AbstractDataset, X_train, y_train, Z_t
 
     X = torch.tensor(X_train, dtype=torch.float64)
     y = torch.tensor(y_train, dtype=torch.float64)
-    Z = torch.tensor(Z_train, dtype=torch.float64).unsqueeze(1)
+    Z = torch.tensor(Z_train, dtype=torch.float64)
 
     y_pred = baseline_model.predict(X_intervention)
-    y_pred = torch.tensor(y_pred, dtype=torch.float64).unsqueeze(1)
+    print(f"y_pred shape before reshape: {y_pred.shape}")
+    y_pred = y_pred.reshape(-1, 1)  # Reshape to match Z shape
+    print(f"y_pred shape after reshape: {y_pred.shape}")
+    print(f"Z shape: {Z.shape}")
+    y_pred = torch.tensor(y_pred, dtype=torch.float64)
 
-    assert y_pred.shape == Z.shape, "Shapes of y_pred and Z do not match."
+    # Ensure Z has the same shape as y_pred
+    if Z.dim() == 3:
+        Z = Z.squeeze(1)  # Remove the extra dimension if present
+
+    assert y_pred.shape == Z.shape, f"Shapes of y_pred ({y_pred.shape}) and Z ({Z.shape}) do not match."
 
     y_counterfactual = y_pred + Z
 
@@ -103,6 +122,7 @@ def augment_data(baseline_model, dataset: AbstractDataset, X_train, y_train, Z_t
 
 def main():
     seeding()
+    timestamp = pd.Timestamp.now().strftime("%Y%m%d-%H%M%S")
 
     datasets = load_datasets()
     for dataset in datasets:
@@ -128,13 +148,15 @@ def main():
             Z = dataset.add_Z(y_pred)
             
             print()
-            res, feature_a = dataset.check_correlation(baseline_model_name)
+            res, feature_a = dataset.check_correlation(baseline_model_name, timestamp)
             print()
             # assert res, "Correlation check failed."
 
             y_pred_train = baseline_model.predict(X_train)
+            y_pred_train = y_pred_train.reshape(-1, 1)  # Reshape to match y_train shape
             Z_train = dataset.add_Z(y_pred_train, y_train)
             y_pred_test = baseline_model.predict(X_test)
+            y_pred_test = y_pred_test.reshape(-1, 1)  # Reshape to match y_test shape
             Z_test = dataset.add_Z(y_pred_test, y_test)
             
             
@@ -152,9 +174,9 @@ def main():
             _, rmse2, y_test2, y_pred2 = baseline_test(baseline_model, X_aug, X_test, y_aug, y_test)
         
             # _, rmse2, y_test2, y_pred2 =  baseline_finetune(baseline_model, X_aug_train, X_test, y_aug_train, y_test)
-            os.makedirs(f'./CAUSAL/results/{baseline_model_name}/sample_sizes', exist_ok=True)
+            os.makedirs(f'./CAUSAL/results/{timestamp}/{baseline_model_name}', exist_ok=True)
 
-            with open(f'./CAUSAL/results/{baseline_model_name}/sample_sizes/mse_results.csv', 'a') as f:
+            with open(f'./CAUSAL/results/{timestamp}/{baseline_model_name}/mse_results.csv', 'a') as f:
                 f.write(f"{dataset.name},{rmse1},{rmse2}\n")
 
             # create a plot
@@ -167,67 +189,14 @@ def main():
             size = dataset.plot_size()
             plt.plot([0, size], [0, size], 'r--')
             plt.legend()
-            os.makedirs(f'./CAUSAL/results/{baseline_model_name}/sample_sizes/actual_vs_predicted', exist_ok=True)
-            plt.savefig(f'./CAUSAL/results/{baseline_model_name}/sample_sizes/actual_vs_predicted/baseline_actual_vs_predicted_{dataset.name}.png')    
+            os.makedirs(f'./CAUSAL/results/{timestamp}/{baseline_model_name}/actual_vs_predicted', exist_ok=True)
+            plt.savefig(f'./CAUSAL/results/{timestamp}/{baseline_model_name}/actual_vs_predicted/baseline_actual_vs_predicted_{dataset.name}.png')    
             plt.close()
 
-        # plot_rmse_delta(baseline_model_names)
-        plot_sample_size_vs_rmse(baseline_model_names)
+        plot_rmse_delta(baseline_model_names, timestamp)
+        # plot_sample_size_vs_rmse(baseline_model_names)
 
-#def a plot_sample_size_vs_rmse():
-# iterate through all the ./CAUSAL/results/{baseline_model_name}/sample_sizes/mse_results.csv files given the baseline_model_names
-# read the csv files and plot the sample size vs rmse for each baseline model (use diff color for the points for this model in this scatter plot) Try to add a line to capture the trend of the rmse % delta for each model
-# each point on this plot should be a sample size on the x-axis and the rmse % delta on the y-axis
-# save the plot as ./CAUSAL/results/sample_size_vs_rmse.png
-
-def plot_sample_size_vs_rmse(baseline_model_names):
-    """
-    Create a scatter plot showing the relationship between sample size and RMSE delta for each dataset and model.
-    """
-    # Dictionary to store the results for each model
-    all_data = {}
-
-    # Read the CSV files for each model
-    for model_name in baseline_model_names:
-        file_path = f'./CAUSAL/results/{model_name}/sample_sizes/mse_results.csv'
-        try:
-            # Using pandas to read the CSV
-            df = pd.read_csv(file_path, header=None, names=['dataset', 'mse_original', 'mse_data_aug'])
-
-            # Calculate the delta (improvement) - positive means improvement
-            df['delta'] = df['mse_original'] - df['mse_data_aug']
-            df['percent_improvement'] = (df['delta'] / df['mse_original']) * 100
-
-            all_data[model_name] = df
-        except FileNotFoundError:
-            print(f"Warning: File {file_path} not found.")
-
-    if not all_data:
-        print("No data found to plot.")
-
-    # Prepare data for plotting
-    fig, ax = plt.subplots(figsize=(14, 8))
-
-    # Plot scatter points for each model
-    for i, (model_name, df) in enumerate(all_data.items()):
-        # Plot the scatter points
-        ax.scatter(df['dataset'], df['percent_improvement'], label=model_name, alpha=0.7)
-
-    # Add zero line, labels, title, etc.
-    ax.axhline(y=0, color='k', linestyle='-', alpha=0.3)
-    ax.set_xlabel('Sample Size')
-    ax.set_ylabel('RMSE Improvement (%)')
-    ax.set_title('Sample Size vs. RMSE Improvement')
-    ax.legend()
-
-    fig.tight_layout()
-
-    plt.savefig('./CAUSAL/results/sample_size_vs_rmse.png')
-    plt.close()
-
-    print("Sample size vs. RMSE plot has been saved.")
-
-def plot_rmse_delta(baseline_model_names):
+def plot_rmse_delta(baseline_model_names, timestamp):
     """
     Create a bar chart showing the improvement in RMSE (delta between original and augmented data)
     for each dataset and model.
@@ -237,7 +206,7 @@ def plot_rmse_delta(baseline_model_names):
     
     # Read the CSV files for each model
     for model_name in baseline_model_names:
-        file_path = f'./CAUSAL/results/{model_name}/mse_results.csv'
+        file_path = f'./CAUSAL/results/{timestamp}/{model_name}/mse_results.csv'
         try:
             # Using pandas to read the CSV
             df = pd.read_csv(file_path, header=None, names=['dataset', 'mse_original', 'mse_data_aug'])
@@ -308,10 +277,10 @@ def plot_rmse_delta(baseline_model_names):
     fig.tight_layout()
     
     # Create directory if it doesn't exist
-    os.makedirs('./CAUSAL/results', exist_ok=True)
+    os.makedirs(f'./CAUSAL/results/{timestamp}', exist_ok=True)
     
     # Save the plot
-    plt.savefig('./CAUSAL/results/rmse_delta_comparison.png')
+    plt.savefig(f'./CAUSAL/results/{timestamp}/rmse_delta_comparison.png')
     plt.close()
     
     print("RMSE delta comparison plot has been saved.")

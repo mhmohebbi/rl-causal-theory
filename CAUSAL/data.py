@@ -11,8 +11,8 @@ import seaborn as sns
 from causal import CausalGraphLearner
 import matplotlib.pyplot as plt
 
-p1 = 0.5
-p2 = 0.25
+p1 = 0.05
+p2 = 0.025
 class AbstractDataset(Dataset):
     def __init__(self, name, X: pd.DataFrame, y: pd.DataFrame):
         # Concatenate X and y, then drop any rows with missing values and reset the index
@@ -91,7 +91,6 @@ class AbstractDataset(Dataset):
         self.normalizer_y = MinMaxScaler()
         self.y_preprocessed = self.normalizer_y.fit_transform(self.y_preprocessed)
 
-        self.X_preprocessed, self.y_preprocessed = self.X.values, self.y.values # take out later
         return self.X_preprocessed, self.y_preprocessed
     
     def split(self, test_size=0.2, X=None, y=None):
@@ -153,7 +152,7 @@ class AbstractDataset(Dataset):
 
         return X_intervention
 
-    def check_casual_graph(self, baseline_model_name):
+    def check_casual_graph(self, baseline_model_name, timestamp):
         assert self.y_preprocessed is not None and self.X_preprocessed is not None, "Preprocess the data first."
         assert self.X_Z is not None, "Add Z to the dataset first."
 
@@ -176,7 +175,7 @@ class AbstractDataset(Dataset):
         # print(graph)
         # print()
         graph_viz = learner.plot_graph()
-        graph_viz.render(f'./CAUSAL/causal_graphs/{baseline_model_name}/sample_sizes/{self.name}', format='png', cleanup=True)
+        graph_viz.render(f'./CAUSAL/results/{timestamp}/causal_graphs/{baseline_model_name}/{self.name}', format='png', cleanup=True)
 
         connected_to_z = learner.get_adjacent_nodes('Z')
         print("Nodes connected to Z:", connected_to_z)
@@ -186,11 +185,11 @@ class AbstractDataset(Dataset):
         print()
         return not_connected_to_z
 
-    def check_correlation(self, baseline_model_name, significance_threshold=0.001):
+    def check_correlation(self, baseline_model_name, timestamp, significance_threshold=0.001):
         assert self.y_preprocessed is not None and self.X_preprocessed is not None, "Preprocess the data first."
         assert self.X_Z is not None, "Add Z to the dataset first."
 
-        not_connected_to_z = self.check_casual_graph(baseline_model_name)
+        not_connected_to_z = self.check_casual_graph(baseline_model_name, timestamp)
 
         X = self.X_Z
         y = self.y_preprocessed
@@ -201,7 +200,7 @@ class AbstractDataset(Dataset):
         feature_names = [col for col in df.columns if col not in ['T', 'Z']]
 
         df_copy = df.copy()
-        independent_features = self.find_independent_features(df_copy, baseline_model_name)
+        independent_features = self.find_independent_features(df_copy, baseline_model_name, timestamp)
         # print("Independent features:", independent_features)
         # print()
 
@@ -267,7 +266,7 @@ class AbstractDataset(Dataset):
         feature_to_use_index = int(feature_to_use[1:])
         return all_checks_passed, feature_to_use_index
 
-    def find_independent_features(self, df, baseline_model_name, corr_threshold=0.5):
+    def find_independent_features(self, df, baseline_model_name, timestamp, corr_threshold=0.5):
         # Compute the absolute correlation matrix
         corr_matrix = df.corr().abs()
 
@@ -275,8 +274,8 @@ class AbstractDataset(Dataset):
         plt.figure(figsize=(10, 8))
         sns.heatmap(corr_matrix, annot=True, cmap='coolwarm')
         plt.title(f"Correlation matrix for {self.name}")
-        os.makedirs(f'./CAUSAL/correlations/{baseline_model_name}/sample_sizes', exist_ok=True)
-        plt.savefig(f'./CAUSAL/correlations/{baseline_model_name}/sample_sizes/correlation_matrix_{self.name}.png')
+        os.makedirs(f'./CAUSAL/results/{timestamp}/correlations/{baseline_model_name}', exist_ok=True)
+        plt.savefig(f'./CAUSAL/results/{timestamp}/correlations/{baseline_model_name}/correlation_matrix_{self.name}.png')
 
         # Greedy selection: iterate over features and keep those that are not highly correlated
         selected_features = []

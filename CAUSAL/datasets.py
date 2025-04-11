@@ -4,6 +4,7 @@ from ucimlrepo import fetch_ucirepo
 import kagglehub
 from kagglehub import KaggleDatasetAdapter
 import numpy as np
+import pandas as pd
 import torch
 from pmlb import dataset_names, fetch_data
 
@@ -27,23 +28,23 @@ X = df.iloc[:, :-1]
 y = df.iloc[:, -1:]
 DATASETS.append(AbstractDataset(name="595_fri_c0_1000_10", X=X, y=y))
 
-df = kagglehub.load_dataset(
-    KaggleDatasetAdapter.PANDAS,
-    "prokshitha/home-value-insights",
-    "house_price_regression_dataset.csv",
-)
-X = df.iloc[:, :-1]
-y = df.iloc[:, -1:]
-DATASETS.append(AbstractDataset(name="HousePrice", X=X, y=y))
+# df = kagglehub.load_dataset(
+#     KaggleDatasetAdapter.PANDAS,
+#     "prokshitha/home-value-insights",
+#     "house_price_regression_dataset.csv",
+# )
+# X = df.iloc[:, :-1]
+# y = df.iloc[:, -1:]
+# DATASETS.append(AbstractDataset(name="HousePrice", X=X, y=y))
 
-df = kagglehub.load_dataset(
-    KaggleDatasetAdapter.PANDAS,
-    "fedesoriano/the-boston-houseprice-data",
-    "boston.csv",
-)
-X = df.iloc[:, :-1]
-y = df.iloc[:, -1:]
-DATASETS.append(AbstractDataset(name="BostonHousePrice", X=X, y=y))
+# df = kagglehub.load_dataset(
+#     KaggleDatasetAdapter.PANDAS,
+#     "fedesoriano/the-boston-houseprice-data",
+#     "boston.csv",
+# )
+# X = df.iloc[:, :-1]
+# y = df.iloc[:, -1:]
+# DATASETS.append(AbstractDataset(name="BostonHousePrice", X=X, y=y))
 
 df = fetch_data('609_fri_c0_1000_5')
 X = df.iloc[:, :-1]
@@ -85,15 +86,15 @@ X = df.iloc[:, :-1]
 y = df.iloc[:, -1:]
 DATASETS.append(AbstractDataset(name="294_satellite_image", X=X, y=y))
 
-df = fetch_data('666_rmftsa_ladata')
-X = df.iloc[:, :-1]
-y = df.iloc[:, -1:]
-DATASETS.append(AbstractDataset(name="666_rmftsa_ladata", X=X, y=y))
+# df = fetch_data('666_rmftsa_ladata')
+# X = df.iloc[:, :-1]
+# y = df.iloc[:, -1:]
+# DATASETS.append(AbstractDataset(name="666_rmftsa_ladata", X=X, y=y))
 
-df = fetch_data('547_no2')
-X = df.iloc[:, :-1]
-y = df.iloc[:, -1:]
-DATASETS.append(AbstractDataset(name="547_no2", X=X, y=y))
+# df = fetch_data('547_no2')
+# X = df.iloc[:, :-1]
+# y = df.iloc[:, -1:]
+# DATASETS.append(AbstractDataset(name="547_no2", X=X, y=y))
 
 df = fetch_data('623_fri_c4_1000_10')
 X = df.iloc[:, :-1]
@@ -110,10 +111,10 @@ X = df.iloc[:, :-1]
 y = df.iloc[:, -1:]
 DATASETS.append(AbstractDataset(name="225_puma8NH", X=X, y=y))
 
-dataset = fetch_ucirepo(id=477)
-X = dataset.data.features.copy()
-y = dataset.data.targets.copy()
-DATASETS.append(AbstractDataset(name="RealEstate", X=X, y=y))
+# dataset = fetch_ucirepo(id=477)
+# X = dataset.data.features.copy()
+# y = dataset.data.targets.copy()
+# DATASETS.append(AbstractDataset(name="RealEstate", X=X, y=y))
 
 dataset = fetch_ucirepo(id=291)
 X = dataset.data.features.copy()
@@ -135,10 +136,10 @@ X = df.iloc[:, :-1]
 y = df.iloc[:, -1:]
 DATASETS.append(AbstractDataset(name="503_wind", X=X, y=y))
     
-df = fetch_data('654_fri_c0_500_10')
-X = df.iloc[:, :-1]
-y = df.iloc[:, -1:]
-DATASETS.append(AbstractDataset(name="654_fri_c0_500_10", X=X, y=y))
+# df = fetch_data('654_fri_c0_500_10')
+# X = df.iloc[:, :-1]
+# y = df.iloc[:, -1:]
+# DATASETS.append(AbstractDataset(name="654_fri_c0_500_10", X=X, y=y))
 
 dataset = fetch_ucirepo(id=186)
 X = dataset.data.features.copy()
@@ -153,7 +154,9 @@ class ParkinsonsTelemonitoringDataset(AbstractDataset):
         super().__init__(name="ParkinsonsTelemonitoring", X=X, y=y)
 
     def preprocess(self):
-        self.y = self.y.drop(columns=['motor_UPDRS'])
+        # Check if motor_UPDRS column exists before trying to drop it
+        if 'motor_UPDRS' in self.y.columns:
+            self.y = self.y.drop(columns=['motor_UPDRS'])
 
         # Standardize the features
         self.scaler_X = StandardScaler()
@@ -182,7 +185,8 @@ class AuctionVerificationDataset(AbstractDataset):
         super().__init__(name="AuctionVerification", X=X, y=y)
     
     def preprocess(self):
-        self.y = self.y.drop(columns=['verification.result'])
+        if 'verification.result' in self.y.columns:
+            self.y = self.y.drop(columns=['verification.result'])
 
         # Standardize the features
         self.scaler_X = StandardScaler()

@@ -55,29 +55,31 @@ def load_datasets():
     datasets = []
 
     for sample_size in sizes:
-        # X, y = generate_data(sample_size)
-        Z = np.random.normal(0, 1, sample_size)
-        alpha = 2.0
-        X2 = alpha * Z + np.random.normal(0, 0.5, sample_size)
-        # X1 depends on X2
-        beta = -1.5
-        X1 = beta * X2 + np.random.normal(0, 0.5, sample_size)
-        X3 = np.random.normal(0, 1, sample_size)
-        B = [1.0, -2.0, 0.5]  # Coefficients for X1, X2, X3
-        y = B[0]*X1 + B[1]*X2 + B[2]*X3 + Z
-        y = y.reshape(-1, 1)
-        X1 = X1.reshape(-1, 1)
-        X2 = X2.reshape(-1, 1)
-        X3 = X3.reshape(-1, 1)
+        X, y = generate_data(sample_size)
 
-        X = np.hstack((X1, X2, X3))
-        print("X1 shape:", X1.shape)
-        print("X2 shape:", X2.shape)
-        print("X3 shape:", X3.shape)
-        print("X shape:", X.shape)
-        print("y shape:", y.shape)
-        X = pd.DataFrame(X, columns=['X1', 'X2', 'X3'])
-        y = pd.DataFrame(y, columns=['y'])
+        # Z = np.random.normal(0, 1, sample_size)
+        # alpha = 2.0
+        # X2 = alpha * Z + np.random.normal(0, 0.5, sample_size)
+        # # X1 depends on X2
+        # beta = -1.5
+        # X1 = beta * X2 + np.random.normal(0, 0.5, sample_size)
+        # X3 = np.random.normal(0, 1, sample_size)
+        # B = [1.0, -2.0, 0.5]  # Coefficients for X1, X2, X3
+        # y = B[0]*X1 + B[1]*X2 + B[2]*X3 + Z
+        # y = y.reshape(-1, 1)
+        # X1 = X1.reshape(-1, 1)
+        # X2 = X2.reshape(-1, 1)
+        # X3 = X3.reshape(-1, 1)
+
+        # X = np.hstack((X1, X2, X3))
+        # print("X1 shape:", X1.shape)
+        # print("X2 shape:", X2.shape)
+        # print("X3 shape:", X3.shape)
+        # print("X shape:", X.shape)
+        # print("y shape:", y.shape)
+        # X = pd.DataFrame(X, columns=['X1', 'X2', 'X3'])
+        # y = pd.DataFrame(y, columns=['y'])
+
         dataset = AbstractDataset(name=f"Linear-{sample_size}", X=X, y=y)
         datasets.append(dataset)
 
@@ -108,7 +110,7 @@ def load_baselines():
         eval_metric='rmse',
         verbosity=1,   
     )
-    return [mlp]
+    # return [mlp]
 
     return [xgb_model, mlp]
 
@@ -198,7 +200,7 @@ def main():
             print()
             # assert res, "Correlation check failed."
             # assert feature_a is not None, "Feature to change is None."
-            feature_a = 2
+            feature_a = 0
             y_pred_train = baseline_model.predict(X_train)
             y_pred_train = y_pred_train.reshape(-1, 1) # remove later
             Z_train = dataset.add_Z(y_pred_train, y_train) 
