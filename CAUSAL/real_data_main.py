@@ -3,6 +3,7 @@ from data import AbstractDataset
 from sklearn.metrics import mean_squared_error, r2_score
 from xgboost import XGBRegressor
 from sklearn.neural_network import MLPRegressor
+from sklearn.linear_model import LinearRegression, Ridge
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -10,7 +11,7 @@ import torch
 import random
 import os
 
-def seeding(seed=72):
+def seeding(seed=5):
     # Seed all random number generators for reproducibility.
     random.seed(seed)
     np.random.seed(seed)
@@ -29,21 +30,27 @@ def load_datasets():
     # return datasets
     #datasets = [WindDataset(), PollenDataset(), DailyDemandForecastingOrdersDataset(), ConcreteCompressiveStrengthDataset(), AirfoilDataset(), AuctionVerificationDataset(), RealEstateDataset(), ParkinsonsTelemonitoringDataset(), FriDataset(), WineQualityDataset()] # AbaloneDataset() 
     
+    datasets = DATASETS
+    datasets = [dataset for dataset in datasets if dataset.name == "623_fri_c4_1000_10"]
     # Limit each dataset to 1000 samples and preprocess
-    for dataset in DATASETS:
+    i = 1
+    for dataset in datasets:
+        print(f"Dataset {i}: {dataset.name}")
+        i +=1
         # Limit to 1000 samples
-        if len(dataset.X) > 2000:
-            dataset.X = dataset.X.iloc[:2000]
-            dataset.y = dataset.y.iloc[:2000]
-        
+        if len(dataset.X) > 1000:
+            dataset.X = dataset.X.iloc[:1000]
+            dataset.y = dataset.y.iloc[:1000]
+
         # Preprocess the dataset
-        dataset.preprocess()
-    
-    return DATASETS
+        # dataset.preprocess() # not needed (ran later)
+    # exit()
+
+    return datasets
 
 def load_baselines():
     mlp = MLPRegressor(
-        hidden_layer_sizes=(64, 32),
+        hidden_layer_sizes=(64, 32, 16),
         activation='relu',
         solver='adam',
         max_iter=500,
@@ -66,7 +73,10 @@ def load_baselines():
         verbosity=1,   
     )
 
-    return [xgb_model, mlp]
+    linear_reg = LinearRegression(fit_intercept=True)
+    ridge_reg = Ridge(alpha=0.1)
+
+    return [xgb_model, mlp, linear_reg, ridge_reg]
 
 def baseline_test(model, X_train, X_test, y_train, y_test):#(dataset: AbstractDataset, aug=None):
 
@@ -135,6 +145,10 @@ def main():
         X, y = dataset.preprocess()
         X_train, X_test, y_train, y_test = dataset.split()
 
+        #####
+        # print(X_train.describe())
+        #####
+
         baselines = load_baselines()
         baseline_model_names = []
         for baseline_model in baselines:
@@ -145,11 +159,16 @@ def main():
 
             baseline_model, rmse1, y_test1, y_pred1 = baseline_test(baseline_model, X_train, X_test, y_train, y_test)
             y_pred = baseline_model.predict(X) # does not matter for now but should only be done on X_train
+            print(f"okkk so {baseline_model_name} is {y_pred.shape}")
+
+            if baseline_model_name in ("Ridge", "LinearRegression") : y_pred = y_pred.reshape(-1)
+
             Z = dataset.add_Z(y_pred)
             
             print()
             res, feature_a = dataset.check_correlation(baseline_model_name, timestamp)
             print()
+            feature_a = 4
             # assert res, "Correlation check failed."
 
             y_pred_train = baseline_model.predict(X_train)
